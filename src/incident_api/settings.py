@@ -9,7 +9,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class ApiSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # When set, POST /api/runs needs "Authorization: Bearer <token>". Leave unset only on localhost.
+    # When set, POST /api/runs needs an "X-Access-Token" header. Leave unset only on localhost.
     api_access_token: str | None = None
     # Every run spends money on a public endpoint, so concurrent runs are capped.
     max_concurrent_runs: int = Field(default=5, gt=0)

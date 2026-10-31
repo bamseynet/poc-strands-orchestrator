@@ -178,21 +178,31 @@ class TestAccessControl:
         assert response.status_code == 401
 
     async def test_a_wrong_token_is_refused(self, protected: ApiSettings) -> None:
-        headers = {"Authorization": "Bearer wrong-token"}
+        headers = {"X-Access-Token": "wrong-token"}
         async with client_for(protected) as client:
             response = await client.post("/api/runs", json={"incident": INCIDENT}, headers=headers)
         assert response.status_code == 401
 
     async def test_the_right_token_is_accepted(self, protected: ApiSettings) -> None:
-        headers = {"Authorization": "Bearer correct-token"}
+        headers = {"X-Access-Token": "correct-token"}
         async with client_for(protected) as client:
             response = await client.post("/api/runs", json={"incident": INCIDENT}, headers=headers)
         assert response.status_code == 200
 
+    async def test_the_authorization_header_is_not_what_grants_access(
+        self, protected: ApiSettings
+    ) -> None:
+        # CloudFront's origin access control overwrites Authorization with its own signature, so the
+        # token has to travel in a header of our own.
+        headers = {"Authorization": "Bearer correct-token"}
+        async with client_for(protected) as client:
+            response = await client.post("/api/runs", json={"incident": INCIDENT}, headers=headers)
+        assert response.status_code == 401
+
     async def test_a_non_ascii_token_is_refused_not_a_server_error(
         self, protected: ApiSettings
     ) -> None:
-        headers = {"Authorization": "Bearer café".encode()}
+        headers = [(b"X-Access-Token", "caf\u00e9".encode("latin-1"))]
         async with client_for(protected) as client:
             response = await client.post("/api/runs", json={"incident": INCIDENT}, headers=headers)
         assert response.status_code == 401

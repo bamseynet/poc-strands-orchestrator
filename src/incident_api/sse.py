@@ -1,4 +1,4 @@
-"""Turns a stream of run events into server-sent events, with heartbeats while the agent is quiet."""
+"""Turns a stream of run events into server-sent events, with heartbeats during quiet spells."""
 
 import asyncio
 import logging
@@ -18,12 +18,13 @@ def format_event(event: RunEvent) -> str:
     return f"event: {event.type}\ndata: {event.model_dump_json()}\n\n"
 
 
-async def sse_stream(events: AsyncIterator[RunEvent], heartbeat_s: float) -> AsyncIterator[str]:
+async def sse_stream(
+    events: AsyncIterator[RunEvent], heartbeat_s: float
+) -> AsyncGenerator[str, None]:
     """Yield SSE frames for `events`. Closing this generator stops the run behind it.
 
-    One task owns the event generator from start to finish. Pulling from it directly with a timeout
-    would cancel it, and resuming it from a new task for each event would break the OTel context
-    managers Strands keeps open inside it.
+    A task pulls the events so that a heartbeat timeout only ever abandons a wait on the queue. A
+    timeout on the event stream itself would cancel the run.
     """
     queue: asyncio.Queue[object] = asyncio.Queue()
 

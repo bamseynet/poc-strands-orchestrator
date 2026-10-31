@@ -52,7 +52,7 @@ class MidFlight:
         async for event in stream:
             if isinstance(event, WorkerTextDelta):
                 break
-        await asyncio.wait_for(stream.aclose(), TIMEOUT_S)  # type: ignore[attr-defined]
+        await asyncio.wait_for(stream.aclose(), TIMEOUT_S)
 
 
 DISCONNECTS = ["disconnect_by_cancelling", "disconnect_by_closing"]

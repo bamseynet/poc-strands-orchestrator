@@ -78,15 +78,13 @@ def create_app(
 
     app = FastAPI(title="Incident orchestrator")
 
-    def require_token(
-        authorization: Annotated[str | None, Header()] = None,
-    ) -> None:
+    def require_token(x_access_token: Annotated[str | None, Header()] = None) -> None:
         if api.api_access_token is None:
             return
-        expected = f"Bearer {api.api_access_token}".encode()
-        # Headers arrive as latin-1. Comparing bytes keeps a non-ASCII token an ordinary refusal.
-        supplied = (authorization or "").encode("latin-1", errors="replace")
-        if not hmac.compare_digest(supplied, expected):
+        # Not Authorization: CloudFront's origin access control overwrites that with its signature.
+        # Comparing bytes keeps a non-ASCII token an ordinary refusal rather than a TypeError.
+        supplied = (x_access_token or "").encode()
+        if not hmac.compare_digest(supplied, api.api_access_token.encode()):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "A valid access token is required.")
 
     @app.get("/api/health")
