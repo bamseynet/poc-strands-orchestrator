@@ -17,9 +17,11 @@ _LOG_LINE = re.compile(
     r"^(?P<ts>\S+) (?P<level>[A-Z]+) (?P<service>\S+) \[(?P<component>[^\]]+)\] (?P<message>.*)$"
 )
 # Values that differ between otherwise identical log lines.
-_VOLATILE = re.compile(r"\b(request_id=)\S+|\b(\w+=)\d+")
+_VOLATILE = re.compile(r"\b(request_id=)\S+|\b(\w+=)\d+(?:\.\d+)?")
 # Numbers that identify a failure rather than vary between occurrences, so are never masked.
 _MEANINGFUL_KEYS = ("status=", "code=", "http_status=", "exit_code=", "errno=")
+# Levels above WARN that all count as errors, so none are silently dropped from the summary.
+_ERROR_LEVELS = frozenset({"ERROR", "FATAL", "CRITICAL"})
 _WORD = re.compile(r"[a-z0-9]+")
 _MAX_LINES = 200
 # Common words that would otherwise let a long free-text query score every runbook alike.
@@ -161,7 +163,7 @@ def summarise_log_errors(service: str) -> dict[str, Any]:
             continue
         if parsed["level"] == "WARN":
             warnings.append(line)
-        elif parsed["level"] == "ERROR":
+        elif parsed["level"] in _ERROR_LEVELS:
             shape = _VOLATILE.sub(_mask, parsed["message"])
             counts[shape] += 1
             first_seen.setdefault(shape, parsed["ts"])

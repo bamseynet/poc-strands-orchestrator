@@ -146,7 +146,11 @@ def _brief(worker: str, incident: dict[str, Any], results: list[_Result]) -> str
         if service is None:
             return f"Check the available logs for: {title}"
         dependencies = knowledge.known_dependencies(service)
-        return f"Examine the logs of {' and '.join([service, *dependencies])} for: {title}"
+        with_logs = knowledge.list_log_sources()
+        names = [name for name in [service, *dependencies] if name in with_logs]
+        if not names:
+            return f"Check the available logs for: {title}"
+        return f"Examine the logs of {' and '.join(names)} for: {title}"
     if worker == _RUNBOOK:
         return f"Find the runbook for: {title}. {incident['description']}"
     if worker == _IMPACT:
@@ -198,7 +202,8 @@ _NUMBERED_STEP = re.compile(r"^\d+\.\s+(.*)$", re.MULTILINE)
 def _analyse_logs(request: ScriptedRequest) -> TurnOutcome:
     results = _results(request)
     if not results:
-        services = _known_services(_prompt(request))
+        with_logs = knowledge.list_log_sources()
+        services = [s for s in _known_services(_prompt(request)) if s in with_logs]
         if not services:
             return Turn(text=_NO_LOG_EVIDENCE)
         return Turn(
