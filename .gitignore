@@ -17,3 +17,8 @@ dist/
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Web
+node_modules/
+web/dist/
+*.tsbuildinfo
