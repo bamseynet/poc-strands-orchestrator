@@ -33,6 +33,13 @@ describe("parseSse", () => {
     expect(await collect(chunks)).toEqual([{ x: "café" }]);
   });
 
+  it("accepts CRLF line endings", async () => {
+    expect(await collect(streamOf('data: {"x":1}\r\n\r\ndata: {"x":2}\r\n\r\n'))).toEqual([
+      { x: 1 },
+      { x: 2 },
+    ]);
+  });
+
   it("ignores heartbeat comments", async () => {
     const body = ': heartbeat\n\ndata: {"x":1}\n\n: heartbeat\n\n';
     expect(await collect(streamOf(body))).toEqual([{ x: 1 }]);

@@ -13,7 +13,8 @@ export async function* parseSse(stream: ReadableStream<Uint8Array>): AsyncGenera
     for (;;) {
       const { done, value } = await reader.read();
       if (done) return;
-      buffer += decoder.decode(value, { stream: true });
+      // The SSE spec allows CRLF line endings; a proxy may use them.
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n?/g, "\n");
 
       let boundary = buffer.indexOf("\n\n");
       while (boundary !== -1) {

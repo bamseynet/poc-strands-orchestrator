@@ -28,6 +28,10 @@ async function explain(response: Response): Promise<string> {
     const body = (await response.json().catch(() => ({}))) as { detail?: string };
     return body.detail ?? "Too many runs are in progress. Try again shortly.";
   }
+  if (response.status === 400) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: string };
+    if (body.detail) return body.detail;
+  }
   return `The server returned ${response.status}.`;
 }
 

@@ -33,7 +33,15 @@ export function IncidentForm({ config, samples, running, onSubmit, onStop }: Pro
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    const incident: Incident = { title, severity, description, service: service || null };
+    // Keep the sample's other fields (source, start time), which the form has no inputs for.
+    const sample = samples.find((s) => s.id === sampleId);
+    const incident: Incident = {
+      ...(sample && { id: sample.id, source: sample.source, started_at: sample.started_at }),
+      title,
+      severity,
+      description,
+      service: service || null,
+    };
     onSubmit(
       { incident, simulate_failures: failure ? [failure] : [] },
       accessToken ? accessToken : undefined,

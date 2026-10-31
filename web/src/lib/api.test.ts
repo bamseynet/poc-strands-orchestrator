@@ -21,6 +21,17 @@ function headersOfLastCall(): Headers {
   return new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers);
 }
 
+describe("startRun errors", () => {
+  it("shows the server's explanation for a 400", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Simulated failures need LLM_MODE=fake." }), {
+        status: 400,
+      }),
+    );
+    await expect(startRun(request)).rejects.toThrow("Simulated failures need LLM_MODE=fake.");
+  });
+});
+
 describe("startRun in an insecure context", () => {
   it("explains the problem instead of reporting a dropped connection", async () => {
     vi.stubGlobal("crypto", {});

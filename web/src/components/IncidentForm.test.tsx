@@ -22,6 +22,8 @@ const samples: Incident[] = [
     severity: "sev3",
     service: "reporting-batch",
     description: "The disk is full.",
+    source: "monitoring",
+    started_at: "2026-01-01T00:00:00Z",
   },
   { id: "cert", title: "Cert expiring", severity: "sev2", description: "Expires soon." },
 ];
@@ -68,6 +70,16 @@ describe("IncidentForm", () => {
     expect(request.incident.description).toBe("The disk is full.");
     expect(request.simulate_failures).toEqual([]);
     expect(token).toBeUndefined();
+  });
+
+  it("keeps the sample's id, source and start time on submit", async () => {
+    const { user, onSubmit } = setup();
+    await user.click(screen.getByRole("button", { name: "Respond to incident" }));
+    expect(onSubmit.mock.calls[0]?.[0].incident).toMatchObject({
+      id: "disk",
+      source: "monitoring",
+      started_at: "2026-01-01T00:00:00Z",
+    });
   });
 
   it("does not submit without a title and description", async () => {
