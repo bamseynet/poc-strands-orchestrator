@@ -201,6 +201,7 @@ textarea {
 .field-row {
   display: grid;
   grid-template-columns: 90px minmax(0, 1fr);
+  align-items: end;
   gap: 0.6rem;
 }
 

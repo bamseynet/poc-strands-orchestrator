@@ -5,12 +5,13 @@ can sit behind a scale-to-zero host. The price is that a dropped connection cann
 """
 
 import hmac
-from collections.abc import AsyncIterator
-from typing import Annotated, Any, Literal
+from collections.abc import AsyncGenerator, Callable
+from typing import Annotated, Any, Literal, cast
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.types import Receive, Scope, Send
 
 from incident_agent import knowledge
 from incident_agent.config import Settings
@@ -65,6 +66,25 @@ class _RunSlots:
         self._free += 1
 
 
+class _RunResponse(StreamingResponse):
+    """Frees the run's slot however the response ends.
+
+    Releasing inside the body generator is not enough: a generator that never started never runs
+    its `finally`, so a client gone before the first frame would hold its slot forever.
+    """
+
+    def __init__(self, *args: Any, on_finished: Callable[[], None], **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self._on_finished = on_finished
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            self._on_finished()
+            await cast(AsyncGenerator[str, None], self.body_iterator).aclose()
+
+
 def create_app(
     *,
     agent_settings: Settings | None = None,
@@ -115,15 +135,12 @@ def create_app(
                 status.HTTP_400_BAD_REQUEST, "Simulated failures need LLM_MODE=fake."
             )
         slots.acquire()
-
-        async def frames() -> AsyncIterator[str]:
-            try:
-                events = run_backend.stream(request.incident, request.simulate_failures)
-                async for frame in sse_stream(events, api.sse_heartbeat_s):
-                    yield frame
-            finally:
-                slots.release()
-
-        return StreamingResponse(frames(), media_type="text/event-stream", headers=_SSE_HEADERS)
+        events = run_backend.stream(request.incident, request.simulate_failures)
+        return _RunResponse(
+            sse_stream(events, api.sse_heartbeat_s),
+            on_finished=slots.release,
+            media_type="text/event-stream",
+            headers=_SSE_HEADERS,
+        )
 
     return app

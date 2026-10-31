@@ -252,6 +252,54 @@ class TestConcurrencyCap:
             assert third.status_code == 200
 
 
+class TestRunSlotsAreNeverLost:
+    @staticmethod
+    async def call_and_disconnect_at_once(app: Any, body: bytes) -> None:
+        """Drive the app as a server would when the client vanishes before the first frame."""
+        messages = [{"type": "http.request", "body": body, "more_body": False}]
+
+        async def receive() -> dict[str, Any]:
+            return messages.pop(0) if messages else {"type": "http.disconnect"}
+
+        async def send(_: dict[str, Any]) -> None:
+            raise OSError("client went away")
+
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0", "spec_version": "2.4"},
+            "http_version": "1.1",
+            "method": "POST",
+            "path": "/api/runs",
+            "raw_path": b"/api/runs",
+            "query_string": b"",
+            "root_path": "",
+            "headers": [(b"content-type", b"application/json")],
+            "client": ("test", 1),
+            "server": ("test", 80),
+            "scheme": "http",
+        }
+        try:
+            await app(scope, receive, send)
+        except OSError:
+            pass  # what a server sees for a client that has gone
+        except Exception as error:
+            if type(error).__name__ != "ClientDisconnect":
+                raise
+
+    async def test_a_client_gone_before_the_first_frame_gives_its_slot_back(self) -> None:
+        app = create_app(
+            agent_settings=fake_agent_settings(),
+            api_settings=ApiSettings(_env_file=None, max_concurrent_runs=1),
+        )
+        body = json.dumps({"incident": INCIDENT}).encode()
+        await self.call_and_disconnect_at_once(app, body)
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            response = await client.post("/api/runs", json={"incident": INCIDENT})
+        assert response.status_code == 200, "the abandoned request must not hold a slot forever"
+
+
 class TestSseStream:
     async def test_sends_heartbeats_while_the_agent_is_quiet(self) -> None:
         blocking = Blocking()

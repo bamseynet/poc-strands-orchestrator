@@ -133,7 +133,7 @@ export function ReportView({ report }: { report: IncidentReport }) {
       <h3>Tokens and cost</h3>
       <div className="table-scroll">
         <table>
-          <caption>Cost estimate. {report.cost.basis}</caption>
+          <caption>{report.cost.basis}</caption>
           <thead>
             <tr>
               <th scope="col">Agent</th>
