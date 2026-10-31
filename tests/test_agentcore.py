@@ -131,6 +131,11 @@ class TestAgentCoreBackend:
         events = await collect(backend_with(client))
         assert isinstance(events[0], RunStarted)
 
+    async def test_a_last_frame_without_a_blank_line_is_still_delivered(self) -> None:
+        unterminated = frame(run_started_json()).rstrip(b"\n")
+        events = await collect(backend_with(FakeAgentCoreClient(FakeBody([unterminated]))))
+        assert isinstance(events[0], RunStarted)
+
     async def test_survives_a_frame_split_across_chunks(self) -> None:
         raw = frame(run_started_json())
         client = FakeAgentCoreClient(FakeBody([raw[:20], raw[20:]]))
@@ -272,3 +277,27 @@ class TestAccessTokenFromSecretsManager:
     def test_local_use_needs_no_secret_or_client(self) -> None:
         settings = ApiSettings(_env_file=None)
         assert resolve_api_settings(settings).api_access_token is None
+
+
+async def test_failure_simulation_is_not_offered_when_the_agent_is_remote() -> None:
+    from incident_api.app import create_app
+
+    settings = ApiSettings(
+        _env_file=None,
+        agent_backend="agentcore",
+        agent_runtime_arn=RUNTIME_ARN,
+        api_access_token="t",
+    )
+    app = create_app(
+        agent_settings=Settings(_env_file=None, llm_mode="fake"),
+        api_settings=settings,
+        backend=backend_with(FakeAgentCoreClient(FakeBody([]))),
+    )
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
+        assert (await c.get("/api/config")).json()["can_simulate_failures"] is False
+        response = await c.post(
+            "/api/runs",
+            json={"incident": INCIDENT, "simulate_failures": ["log_analysis"]},
+            headers={"X-Access-Token": "t"},
+        )
+    assert response.status_code == 400

@@ -99,6 +99,8 @@ def create_app(
     api = api_settings or ApiSettings()
     run_backend = backend or InProcessBackend(agent)
     slots = _RunSlots(api.max_concurrent_runs)
+    # Failures are simulated by the in-process fake model; a remote agent cannot be told to.
+    can_simulate_failures = agent.llm_mode == "fake" and api.agent_backend == "inprocess"
 
     app = FastAPI(title="Incident orchestrator")
 
@@ -123,7 +125,7 @@ def create_app(
     def config() -> ClientConfig:
         return ClientConfig(
             llm_mode=agent.llm_mode,
-            can_simulate_failures=agent.llm_mode == "fake",
+            can_simulate_failures=can_simulate_failures,
             auth_required=bool(api.api_access_token),
             orchestrator_model=agent.bedrock_model_id,
             worker_model=agent.bedrock_worker_model_id,
@@ -134,7 +136,7 @@ def create_app(
 
     @app.post("/api/runs", dependencies=[Depends(require_token)])
     async def create_run(request: RunRequest) -> StreamingResponse:
-        if request.simulate_failures and agent.llm_mode != "fake":
+        if request.simulate_failures and not can_simulate_failures:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, "Simulated failures need LLM_MODE=fake."
             )

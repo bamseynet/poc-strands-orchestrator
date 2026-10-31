@@ -100,9 +100,17 @@ async def _sse_data(chunks: Iterator[bytes]) -> AsyncGenerator[str, None]:
         buffer += decoder.decode(chunk)
         while "\n\n" in buffer:
             frame, buffer = buffer.split("\n\n", 1)
-            lines = [line[5:].strip() for line in frame.splitlines() if line.startswith("data:")]
-            if lines:
-                yield "\n".join(lines)
+            if data := _frame_data(frame):
+                yield data
+    # A last frame the runtime did not terminate with a blank line is still a frame.
+    buffer += decoder.decode(b"", final=True)
+    if data := _frame_data(buffer):
+        yield data
+
+
+def _frame_data(frame: str) -> str | None:
+    lines = [line[5:].strip() for line in frame.splitlines() if line.startswith("data:")]
+    return "\n".join(lines) if lines else None
 
 
 def _parse_frame(data: str) -> RunEvent:
