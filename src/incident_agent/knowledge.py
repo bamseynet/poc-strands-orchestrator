@@ -18,6 +18,8 @@ _LOG_LINE = re.compile(
 )
 # Values that differ between otherwise identical log lines.
 _VOLATILE = re.compile(r"\b(request_id=)\S+|\b(\w+=)\d+")
+# Numbers that identify a failure rather than vary between occurrences, so are never masked.
+_MEANINGFUL_KEYS = ("status=", "code=", "http_status=", "exit_code=", "errno=")
 _WORD = re.compile(r"[a-z0-9]+")
 _MAX_LINES = 200
 # Common words that would otherwise let a long free-text query score every runbook alike.
@@ -139,6 +141,12 @@ def search_logs(
     }
 
 
+def _mask(match: re.Match[str]) -> str:
+    if (key := match[2]) and key.lower() in _MEANINGFUL_KEYS:
+        return match[0]
+    return f"{match[1] or match[2]}#"
+
+
 def summarise_log_errors(service: str) -> dict[str, Any]:
     """Group a service's errors by shape, with first and last seen, plus its warnings."""
     counts: Counter[str] = Counter()
@@ -154,7 +162,7 @@ def summarise_log_errors(service: str) -> dict[str, Any]:
         if parsed["level"] == "WARN":
             warnings.append(line)
         elif parsed["level"] == "ERROR":
-            shape = _VOLATILE.sub(lambda m: f"{m[1] or m[2]}#", parsed["message"])
+            shape = _VOLATILE.sub(_mask, parsed["message"])
             counts[shape] += 1
             first_seen.setdefault(shape, parsed["ts"])
             last_seen[shape] = parsed["ts"]

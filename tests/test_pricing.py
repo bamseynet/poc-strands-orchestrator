@@ -54,3 +54,7 @@ def test_a_dated_model_version_is_still_priced() -> None:
     assert pricing.usd_for("anthropic.claude-opus-5-5-20260101-v1:0", MILLION) == pytest.approx(
         24.0
     )
+
+
+def test_a_different_model_sharing_a_prefix_is_not_priced_as_a_known_one() -> None:
+    assert pricing.usd_for("us.anthropic.claude-opus-5-50", MILLION) is None

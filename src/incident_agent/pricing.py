@@ -24,12 +24,22 @@ _PRICES_PER_MTOK = {
 _MODEL_NAME = re.compile(r"claude-[a-z0-9-]+")
 
 
+# What may follow a model name: an optional release date and an optional Bedrock version.
+_VERSION_SUFFIX = re.compile(r"(-\d{8})?(-v\d+)?")
+
+
+def _is_version_of(model: str, name: str) -> bool:
+    """True for the name itself or a dated/versioned form, never for a different model."""
+    return model.startswith(name) and _VERSION_SUFFIX.fullmatch(model[len(name) :]) is not None
+
+
 def usd_for(model_id: str, usage: Usage) -> float | None:
     """Price `usage` on any id form (bare, or geo/global profile). None if the model is unknown."""
     match = _MODEL_NAME.search(model_id)
     # Real ids can carry a date or version suffix, e.g. claude-opus-5-5-20260101-v1:0.
     prices = next(
-        (p for name, p in _PRICES_PER_MTOK.items() if match and match[0].startswith(name)), None
+        (p for name, p in _PRICES_PER_MTOK.items() if match and _is_version_of(match[0], name)),
+        None,
     )
     if prices is None:
         return None

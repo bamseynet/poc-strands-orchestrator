@@ -131,3 +131,15 @@ class TestSampleIncidents:
 def test_filler_words_in_a_long_query_do_not_decide_the_ranking() -> None:
     query = "the is of and to a in it that this was for on are with " + "disk full"
     assert knowledge.search_runbooks(query)[0]["runbook_id"] == "disk-full"
+
+
+def test_different_status_codes_are_not_merged_into_one_error_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lines = tuple(
+        f"2026-01-01T00:00:0{i}Z ERROR svc [x] upstream failed status={code} duration_ms={i}"
+        for i, code in enumerate((502, 502, 503))
+    )
+    monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
+    groups = knowledge.summarise_log_errors("svc")["error_groups"]
+    assert {g["count"] for g in groups} == {2, 1}
