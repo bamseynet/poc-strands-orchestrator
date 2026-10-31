@@ -1,0 +1,38 @@
+[
+  {
+    "id": "checkout-5xx",
+    "title": "Checkout failures: payments-api returning 503s",
+    "severity": "sev1",
+    "service": "payments-api",
+    "source": "synthetic-monitor",
+    "started_at": "2026-10-30T14:03:00Z",
+    "description": "Synthetic checkout probe failing since 14:03 UTC. payments-api 5xx rate at 38% and rising, p99 latency above 5s. Customer support reports card payments failing at checkout."
+  },
+  {
+    "id": "batch-disk-full",
+    "title": "reporting-batch: finance export failing, disk nearly full",
+    "severity": "sev3",
+    "service": "reporting-batch",
+    "source": "node-exporter",
+    "started_at": "2026-10-30T14:17:00Z",
+    "description": "Alert: /var/spool/exports above 95% on the reporting-batch host. The finance end-of-day export job has started to fail with write errors."
+  },
+  {
+    "id": "auth-cert-expiry",
+    "title": "auth-service TLS certificate expires in 5 days",
+    "severity": "sev3",
+    "service": "auth-service",
+    "source": "cert-monitor",
+    "started_at": "2026-10-30T13:55:00Z",
+    "description": "Certificate monitor warning: certificate for auth.acme.example expires in 5 days and automatic renewal did not complete. Nothing is failing yet. Which services would be hit if it lapses, and what is the renewal procedure?"
+  },
+  {
+    "id": "orders-db-maintenance",
+    "title": "Planned orders-db maintenance needs a stakeholder notice",
+    "severity": "sev4",
+    "service": "orders-db",
+    "source": "change-calendar",
+    "started_at": "2026-11-02T02:00:00Z",
+    "description": "Change CHG-2318 takes orders-db read-only for 20 minutes on 2 November at 02:00 UTC for a minor version upgrade. Nothing is broken. Draft the stakeholder announcement and tell us who is affected."
+  }
+]

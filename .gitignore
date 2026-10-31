@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+
+# Secrets and local config: only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Claude Code local settings
+.claude/settings.local.json

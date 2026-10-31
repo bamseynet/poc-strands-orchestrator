@@ -1,0 +1,11 @@
+2026-10-30T13:50:30Z INFO orders-db [stats] connections active=20 max=400 cpu_pct=23 replication_lag_ms=2
+2026-10-30T13:54:30Z INFO orders-db [stats] connections active=13 max=400 cpu_pct=24 replication_lag_ms=6
+2026-10-30T13:58:30Z INFO orders-db [stats] connections active=34 max=400 cpu_pct=29 replication_lag_ms=8
+2026-10-30T14:02:30Z INFO orders-db [stats] connections active=8 max=400 cpu_pct=23 replication_lag_ms=7
+2026-10-30T14:06:30Z INFO orders-db [stats] connections active=9 max=400 cpu_pct=29 replication_lag_ms=5
+2026-10-30T14:08:00Z INFO orders-db [vacuum] autovacuum completed table=orders duration_s=41
+2026-10-30T14:10:30Z INFO orders-db [stats] connections active=11 max=400 cpu_pct=27 replication_lag_ms=4
+2026-10-30T14:14:30Z INFO orders-db [stats] connections active=13 max=400 cpu_pct=19 replication_lag_ms=5
+2026-10-30T14:16:00Z WARN orders-db [stats] slow query duration_ms=1210 statement=orders_by_customer
+2026-10-30T14:18:30Z INFO orders-db [stats] connections active=8 max=400 cpu_pct=22 replication_lag_ms=6
+2026-10-30T14:22:30Z INFO orders-db [stats] connections active=11 max=400 cpu_pct=27 replication_lag_ms=4

@@ -1,0 +1,15 @@
+2026-10-30T13:50:00Z INFO reporting-batch [disk] volume /var/spool/exports used_pct=73
+2026-10-30T13:52:00Z INFO reporting-batch [job] export job started job=finance-eod-export run=8841
+2026-10-30T13:53:00Z INFO reporting-batch [disk] volume /var/spool/exports used_pct=76
+2026-10-30T13:56:00Z INFO reporting-batch [disk] volume /var/spool/exports used_pct=79
+2026-10-30T13:59:00Z WARN reporting-batch [disk] volume /var/spool/exports used_pct=82
+2026-10-30T14:02:00Z WARN reporting-batch [disk] volume /var/spool/exports used_pct=84
+2026-10-30T14:05:00Z WARN reporting-batch [disk] volume /var/spool/exports used_pct=86
+2026-10-30T14:08:00Z WARN reporting-batch [disk] volume /var/spool/exports used_pct=89
+2026-10-30T14:11:00Z WARN reporting-batch [disk] volume /var/spool/exports used_pct=91
+2026-10-30T14:14:00Z WARN reporting-batch [disk] volume /var/spool/exports used_pct=93
+2026-10-30T14:17:00Z WARN reporting-batch [disk] volume /var/spool/exports used_pct=95
+2026-10-30T14:17:30Z ERROR reporting-batch [job] write failed: No space left on device path=/var/spool/exports/finance-eod-8841.parquet
+2026-10-30T14:18:00Z ERROR reporting-batch [job] write failed: No space left on device path=/var/spool/exports/finance-eod-8841.parquet
+2026-10-30T14:18:30Z ERROR reporting-batch [job] job failed job=finance-eod-export run=8841 retry=1/3
+2026-10-30T14:19:00Z WARN reporting-batch [cleanup] retention task skipped: cron disabled since 2026-10-12 by change CHG-2291

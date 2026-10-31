@@ -1,0 +1,51 @@
+2026-10-30T13:50:05Z INFO payments-api [http] POST /v1/charges 201 duration_ms=114 request_id=req-708368
+2026-10-30T13:52:05Z INFO payments-api [http] POST /v1/charges 201 duration_ms=115 request_id=req-aae2c5
+2026-10-30T13:54:05Z INFO payments-api [http] POST /v1/charges 201 duration_ms=135 request_id=req-d2db33
+2026-10-30T13:56:05Z INFO payments-api [http] POST /v1/charges 201 duration_ms=82 request_id=req-861eab
+2026-10-30T13:58:05Z INFO payments-api [http] POST /v1/charges 201 duration_ms=120 request_id=req-8a4314
+2026-10-30T14:00:05Z INFO payments-api [http] POST /v1/charges 201 duration_ms=87 request_id=req-adb839
+2026-10-30T14:01:40Z INFO payments-api [deploy] rolling update started version=2.31.0 previous=2.30.4 actor=ci-pipeline
+2026-10-30T14:02:03Z INFO payments-api [boot] payments-api 2.31.0 started
+2026-10-30T14:02:03Z WARN payments-api [config] db.pool.max_size=5 overrides default 50 source=helm-values-prod
+2026-10-30T14:02:04Z INFO payments-api [db] connection pool initialised size=5 target=orders-db
+2026-10-30T14:03:00Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=66 request_id=req-d3370d
+2026-10-30T14:03:02Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5036 request_id=req-4bd274
+2026-10-30T14:03:45Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=50 request_id=req-2a7c93
+2026-10-30T14:04:30Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=33 request_id=req-9180f3
+2026-10-30T14:04:32Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5036 request_id=req-b3640a
+2026-10-30T14:05:15Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=86 request_id=req-d53439
+2026-10-30T14:06:00Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=71 request_id=req-2ec194
+2026-10-30T14:06:02Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5014 request_id=req-f7e574
+2026-10-30T14:06:45Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=73 request_id=req-c93fa8
+2026-10-30T14:07:30Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=93 request_id=req-5e610d
+2026-10-30T14:07:32Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5157 request_id=req-7b3295
+2026-10-30T14:08:15Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=68 request_id=req-c0ba99
+2026-10-30T14:09:00Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=101 request_id=req-4eef98
+2026-10-30T14:09:02Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5162 request_id=req-5ff1f8
+2026-10-30T14:09:45Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=30 request_id=req-ea337c
+2026-10-30T14:10:10Z WARN payments-api [http] circuit breaker half-open upstream=orders-db
+2026-10-30T14:10:30Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=39 request_id=req-5c7d6e
+2026-10-30T14:10:32Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5185 request_id=req-877978
+2026-10-30T14:11:15Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=91 request_id=req-676239
+2026-10-30T14:12:00Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=46 request_id=req-2b8e94
+2026-10-30T14:12:02Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5025 request_id=req-f61c04
+2026-10-30T14:12:45Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=61 request_id=req-2545a9
+2026-10-30T14:13:30Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=93 request_id=req-c9ddf2
+2026-10-30T14:13:32Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5126 request_id=req-185657
+2026-10-30T14:14:15Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=49 request_id=req-7846de
+2026-10-30T14:15:00Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=41 request_id=req-2bd47d
+2026-10-30T14:15:02Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5106 request_id=req-bee2f4
+2026-10-30T14:15:45Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=39 request_id=req-354a01
+2026-10-30T14:16:30Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=56 request_id=req-de364a
+2026-10-30T14:16:32Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5157 request_id=req-89c3e0
+2026-10-30T14:17:15Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=58 request_id=req-a0fb5b
+2026-10-30T14:18:00Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=42 request_id=req-8be970
+2026-10-30T14:18:02Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5151 request_id=req-82d4f2
+2026-10-30T14:18:45Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=96 request_id=req-8ac68d
+2026-10-30T14:19:30Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=55 request_id=req-16f046
+2026-10-30T14:19:32Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5067 request_id=req-b4b6db
+2026-10-30T14:20:00Z INFO payments-api [http] health check /healthz 200 note=liveness-only
+2026-10-30T14:20:15Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=114 request_id=req-496b2e
+2026-10-30T14:21:00Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=112 request_id=req-29c056
+2026-10-30T14:21:02Z ERROR payments-api [http] POST /v1/charges 503 duration_ms=5010 request_id=req-bd7093
+2026-10-30T14:21:45Z ERROR payments-api [db] connection pool exhausted: timed out after 5000ms waiting for a connection active=5 idle=0 waiting=90 request_id=req-ea620e

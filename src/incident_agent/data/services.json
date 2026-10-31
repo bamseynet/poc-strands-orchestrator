@@ -1,0 +1,42 @@
+{
+  "edge-gateway": {
+    "team": "platform-networking", "on_call": "#oncall-edge", "tier": 1, "customer_facing": true,
+    "depends_on": ["auth-service"],
+    "journeys": ["all public traffic"]
+  },
+  "checkout-web": {
+    "team": "checkout", "on_call": "#oncall-checkout", "tier": 1, "customer_facing": true,
+    "depends_on": ["edge-gateway", "payments-api", "inventory-api", "auth-service"],
+    "journeys": ["place an order"]
+  },
+  "payments-api": {
+    "team": "payments", "on_call": "#oncall-payments", "tier": 1, "customer_facing": false,
+    "depends_on": ["orders-db", "auth-service"],
+    "journeys": ["take a payment", "issue a refund"]
+  },
+  "inventory-api": {
+    "team": "fulfilment", "on_call": "#oncall-fulfilment", "tier": 2, "customer_facing": false,
+    "depends_on": ["orders-db"],
+    "journeys": ["check stock"]
+  },
+  "orders-db": {
+    "team": "data-platform", "on_call": "#oncall-data", "tier": 1, "customer_facing": false,
+    "depends_on": [],
+    "journeys": []
+  },
+  "auth-service": {
+    "team": "identity", "on_call": "#oncall-identity", "tier": 1, "customer_facing": false,
+    "depends_on": [],
+    "journeys": ["sign in", "refresh a session"]
+  },
+  "notifications": {
+    "team": "customer-engagement", "on_call": "#oncall-engagement", "tier": 3, "customer_facing": false,
+    "depends_on": ["payments-api"],
+    "journeys": ["send a receipt email"]
+  },
+  "reporting-batch": {
+    "team": "finance-systems", "on_call": "#oncall-finance-systems", "tier": 3, "customer_facing": false,
+    "depends_on": ["orders-db"],
+    "journeys": ["finance end-of-day export"]
+  }
+}
