@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncGenerator, AsyncIterator, Mapping
 from dataclasses import dataclass
 from typing import Any
 from uuid import uuid4
@@ -80,7 +80,7 @@ async def run_incident(
     *,
     limits: RunLimits | None = None,
     run_id: str | None = None,
-) -> AsyncIterator[RunEvent]:
+) -> AsyncGenerator[RunEvent, None]:
     """Stream a run. Ends with `ReportReady`, or `RunFailed` if there is nothing worth reporting.
 
     Never raises for an agent or model failure: those become events, because by then a client is

@@ -22,3 +22,6 @@ dist/
 node_modules/
 web/dist/
 *.tsbuildinfo
+
+# Local browser-testing output
+.playwright-mcp/

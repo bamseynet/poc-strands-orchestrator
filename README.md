@@ -9,17 +9,28 @@ specialist workers on a cheaper model to call. They run in parallel where they a
 the orchestrator turns their findings into an incident summary, probable cause, recommended actions
 and a stakeholder message.
 
-> **Status.** This is the agent core. The API and UI, then the CDK infrastructure and deployment
-> guide, follow in later pull requests. Everything has been tested offline with a fake LLM and a
-> stubbed Bedrock client. **It has not yet been run against live Bedrock**, because no AWS credentials
-> were available when it was built.
+> **Status.** The agent core, API and UI are here. The CDK infrastructure and deployment guide follow
+> in a later pull request. Everything has been tested offline with a fake LLM and a stubbed Bedrock
+> client. **It has not yet been run against live Bedrock**, because no AWS credentials were available
+> when it was built.
 
 ## Try it
 
-You need [uv](https://docs.astral.sh/uv/) and nothing else: no AWS account.
+You need [uv](https://docs.astral.sh/uv/) and Node.js 22 or later, but no AWS account.
 
 ```bash
 make install
+make dev        # open http://localhost:5173
+```
+
+Submit an incident and watch the orchestrator's plan and each worker's progress as they stream, then
+read the report with its per-worker traces and token and cost estimate. Try several samples to see
+the team change, and simulate a worker failure to see the run degrade. Set `API_PORT` or `WEB_PORT`
+if those ports are taken.
+
+Without the UI:
+
+```bash
 make sample                               # the full team on a sev1 outage
 make sample SAMPLE=batch-disk-full        # the same code picks a smaller team
 uv run python -m incident_agent --list    # all the samples
@@ -33,7 +44,7 @@ execution, and real tool calls over the bundled sample data all run for real.
 For real models, enable access to the models in your account, then:
 
 ```bash
-LLM_MODE=bedrock AWS_REGION=us-east-1 make sample
+LLM_MODE=bedrock AWS_REGION=us-east-1 make dev
 ```
 
 | Variable | Default | Purpose |
@@ -167,10 +178,30 @@ It is delimited and described as data in the prompts, and tools are read-only wi
 against the bundled data. That reduces the risk of prompt injection but does not eliminate it, which
 is another reason this system only recommends.
 
+## The API
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /api/config` | What the UI should offer: LLM mode, models, workers, whether a token is needed |
+| `GET /api/samples` | The sample incidents |
+| `POST /api/runs` | Starts a run. The response is the run, as server-sent events |
+| `GET /api/health` | Liveness |
+
+A run is one POST whose response is the event stream, so the API holds no state between requests and
+can sit behind a scale-to-zero host. The UI reads the stream with `fetch`, because `EventSource` only
+supports GET. Closing the connection stops the run and its spending, but a dropped connection can't be
+resumed.
+
+Input is validated before the stream starts, so a bad request gets an ordinary 422. After that, any
+failure arrives as an event. Set `API_ACCESS_TOKEN` to require an `X-Access-Token` header on
+`POST /api/runs`, and concurrent runs are capped by `MAX_CONCURRENT_RUNS`.
+
 ## Tests
 
 `make check` runs everything CI runs, offline, with no credentials. The tests drive the real Strands
-agents and event loop behind a scripted model.
+agents and event loop behind a scripted model. The UI tests replay real runs captured from the agent,
+and a Python test fails if the agent's events stop matching those captures, so the two sides can't
+drift apart unnoticed.
 
 | Requirement | How it is tested |
 | --- | --- |
