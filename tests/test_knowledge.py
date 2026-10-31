@@ -191,3 +191,13 @@ def test_compound_code_keys_and_python_style_warnings_are_kept(
     summary = knowledge.summarise_log_errors("svc")
     assert len(summary["error_groups"]) == 2
     assert len(summary["warnings"]) == 1
+
+
+def test_prefixed_request_ids_do_not_split_identical_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lines = tuple(
+        f"2026-01-01T00:00:0{i}Z ERROR svc [x] failed x_request_id=ab{i}f" for i in range(3)
+    )
+    monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
+    assert [g["count"] for g in knowledge.summarise_log_errors("svc")["error_groups"]] == [3]

@@ -17,7 +17,7 @@ _LOG_LINE = re.compile(
     r"^(?P<ts>\S+) (?P<level>[A-Z]+) (?P<service>\S+) \[(?P<component>[^\]]+)\] (?P<message>.*)$"
 )
 # Values that differ between otherwise identical log lines.
-_VOLATILE = re.compile(r"\b(request_id=)\S+|\b(\w+=)\d+(?:\.\d+)?")
+_VOLATILE = re.compile(r"\b(\w*request_id=)\S+|\b(\w+=)\d+(?:\.\d+)?")
 # Numbers that identify a failure rather than vary between occurrences, so are never masked.
 _MEANINGFUL_KEYS = ("status=", "code=", "errno=")
 # Levels above WARN that all count as errors, so none are silently dropped from the summary.
