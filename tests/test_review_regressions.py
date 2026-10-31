@@ -313,4 +313,4 @@ async def test_a_failure_while_building_the_orchestrator_becomes_an_event(
     monkeypatch.setattr(runner, "build_orchestrator", boom)
     events = await run(Team([Turn()]), incident())
     assert events[-1].type == "run_failed"
-    assert "bad model config" in events[-1].error  # type: ignore[union-attr]
+    assert "bad model config" in events[-1].error
