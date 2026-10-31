@@ -168,6 +168,13 @@ class TestAgentCoreBackend:
         events = await collect(backend_with(FakeAgentCoreClient(body)))
         assert len(events) == 1
 
+    async def test_unicode_line_separators_inside_the_json_do_not_cut_the_frame(self) -> None:
+        event = run_started_json()
+        event["incident"]["title"] = "line\u2028separator\u0085here"
+        body = FakeBody([f"data: {json.dumps(event, ensure_ascii=False)}\n\n".encode()])
+        events = await collect(backend_with(FakeAgentCoreClient(body)))
+        assert isinstance(events[0], RunStarted)
+
     async def test_survives_a_frame_split_across_chunks(self) -> None:
         raw = frame(run_started_json())
         client = FakeAgentCoreClient(FakeBody([raw[:20], raw[20:]]))

@@ -128,7 +128,7 @@ async def _sse_data(chunks: Iterator[bytes]) -> AsyncGenerator[str, None]:
 
 
 def _frame_data(frame: str) -> str | None:
-    lines = [line[5:].strip() for line in frame.splitlines() if line.startswith("data:")]
+    lines = [line[5:].strip() for line in frame.split("\n") if line.startswith("data:")]
     return "\n".join(lines) if lines else None
 
 

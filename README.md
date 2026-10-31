@@ -307,6 +307,10 @@ quota increase.
 - **Prompt injection is reduced, not solved.** The agent reads untrusted text. Its tools are read-only
   and it changes nothing, which is what limits the damage. Don't give it tools that act without adding
   human approval.
+- **The spending brake is Lambda's reserved concurrency (5),** which counts every request, so five
+  long runs also throttle `/api/config` and `/api/samples`. It needs an account whose Lambda quota is
+  above 10 (new accounts start at 10, and Lambda keeps 10 unreserved), or lower the number in
+  `infra/lib/incident-stack.ts`. The API's own per-process run cap does not add to it.
 - **A hung model call** is only bounded by the client's 120s read timeout and the run's deadline. There
   is no per-worker timeout.
 - **Refusals have no fallback.** A worker the model declines to answer is reported as failed, rather than
