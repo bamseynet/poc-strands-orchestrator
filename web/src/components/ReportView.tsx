@@ -6,14 +6,17 @@ import { Timeline } from "./Timeline";
 import { TraceSteps } from "./TraceSteps";
 
 function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
+  // Remembering which text was copied, not just that something was, means a new draft is never
+  // shown as already copied.
+  const [copiedText, setCopiedText] = useState<string | null>(null);
+  const copied = copiedText === text;
   async function copy() {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(true);
+      setCopiedText(text);
     } catch {
       // Clipboard access is refused outside secure contexts or without permission.
-      setCopied(false);
+      setCopiedText(null);
     }
   }
   return (
@@ -49,8 +52,8 @@ export function ReportView({ report }: { report: IncidentReport }) {
             <p>The orchestrator did not finish its synthesis, so rely on the findings below.</p>
           )}
           <ul>
-            {report.degradation_notes.map((note) => (
-              <li key={note}>{note}</li>
+            {report.degradation_notes.map((note, index) => (
+              <li key={`${index}-${note}`}>{note}</li>
             ))}
           </ul>
         </div>
@@ -68,8 +71,8 @@ export function ReportView({ report }: { report: IncidentReport }) {
         <>
           <h3>Recommended actions</h3>
           <ol className="actions">
-            {report.recommended_actions.map((action) => (
-              <li key={action.action}>
+            {report.recommended_actions.map((action, index) => (
+              <li key={`${index}-${action.action}`}>
                 <span className={`priority priority-${action.priority}`}>{action.priority}</span>
                 {action.action}
               </li>

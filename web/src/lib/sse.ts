@@ -25,7 +25,7 @@ export async function* parseSse(stream: ReadableStream<Uint8Array>): AsyncGenera
       const { done, value } = await reader.read();
       if (done) {
         // A CR that ended the stream was a whole line ending, not half of a CRLF.
-        buffer += heldCr.replace("\r", "\n");
+        buffer += (heldCr + decoder.decode()).replace(/\r\n?/g, "\n");
         yield* drain();
         return;
       }
