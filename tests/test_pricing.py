@@ -48,3 +48,9 @@ def test_the_total_is_withheld_if_any_line_cannot_be_priced() -> None:
 
 def test_the_estimate_says_that_it_is_one() -> None:
     assert "estimate" in pricing.estimate([]).basis.lower()
+
+
+def test_a_dated_model_version_is_still_priced() -> None:
+    assert pricing.usd_for("anthropic.claude-opus-5-5-20260101-v1:0", MILLION) == pytest.approx(
+        24.0
+    )

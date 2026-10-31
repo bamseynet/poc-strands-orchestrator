@@ -113,12 +113,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         for sample_id, sample in samples.items():
             print(f"{sample_id}: {sample['title']}")
         return 0
+    if args.sample is None:
+        parser.error(f"--sample is required; choose from {', '.join(samples)}")
     if args.sample not in samples:
         parser.error(f"unknown sample {args.sample!r}; choose from {', '.join(samples)}")
-    if args.simulate_failure and Settings().llm_mode != "fake":
-        parser.error("--simulate-failure needs LLM_MODE=fake")
 
     settings = Settings()
+    if args.simulate_failure and settings.llm_mode != "fake":
+        parser.error("--simulate-failure needs LLM_MODE=fake")
     configure_telemetry(settings)
     incident = Incident.model_validate(samples[args.sample])
     return asyncio.run(_run(incident, settings, args.simulate_failure, args.json))

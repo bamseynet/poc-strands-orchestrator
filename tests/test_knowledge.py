@@ -8,6 +8,14 @@ from incident_agent import knowledge
 
 
 class TestLogs:
+    def test_unparseable_lines_are_reported_not_silently_dropped(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        lines = ("2026-01-01T00:00:00Z ERROR svc [x] boom", "    at Trace.continuation(foo)")
+        monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
+        assert knowledge.search_logs("svc")["unparsed_lines_skipped"] == 1
+        assert knowledge.summarise_log_errors("svc")["unparsed_lines_skipped"] == 1
+
     def test_lists_the_bundled_sources(self) -> None:
         sources = knowledge.list_log_sources()
         assert "payments-api" in sources
@@ -116,3 +124,8 @@ class TestSampleIncidents:
     def test_every_tool_result_is_json_serialisable(self) -> None:
         json.dumps(knowledge.blast_radius("orders-db"))
         json.dumps(knowledge.summarise_log_errors("payments-api"))
+
+
+def test_filler_words_in_a_long_query_do_not_decide_the_ranking() -> None:
+    query = "the is of and to a in it that this was for on are with " + "disk full"
+    assert knowledge.search_runbooks(query)[0]["runbook_id"] == "disk-full"

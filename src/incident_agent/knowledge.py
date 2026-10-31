@@ -20,6 +20,42 @@ _LOG_LINE = re.compile(
 _VOLATILE = re.compile(r"\b(request_id=)\S+|\b(\w+=)\d+")
 _WORD = re.compile(r"[a-z0-9]+")
 _MAX_LINES = 200
+# Common words that would otherwise let a long free-text query score every runbook alike.
+_STOPWORDS = frozenset(
+    [
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "for",
+        "from",
+        "has",
+        "have",
+        "in",
+        "is",
+        "it",
+        "its",
+        "not",
+        "of",
+        "on",
+        "or",
+        "that",
+        "the",
+        "this",
+        "to",
+        "was",
+        "were",
+        "will",
+        "with",
+        "respond",
+        "incident",
+    ]
+)
 
 
 class UnknownEntityError(LookupError):
@@ -80,9 +116,10 @@ def search_logs(
     service: str, level: str | None = None, contains: str | None = None, limit: int = 50
 ) -> dict[str, Any]:
     """Log lines for a service, optionally filtered; `total_matches` ignores `limit`."""
+    all_lines = _lines_for(service)
     matches = [
         line
-        for line in _lines_for(service)
+        for line in all_lines
         if (parsed := _LOG_LINE.match(line))
         and (level is None or parsed["level"] == level.upper())
         and (contains is None or contains.lower() in line.lower())
@@ -90,6 +127,9 @@ def search_logs(
     return {
         "service": service,
         "total_matches": len(matches),
+        # Lines that are not in the standard format (such as stack-trace continuations) cannot be
+        # filtered by level, so say how many were left out rather than hide them.
+        "unparsed_lines_skipped": sum(1 for line in all_lines if not _LOG_LINE.match(line)),
         "lines": matches[: max(0, min(limit, _MAX_LINES))],
     }
 
@@ -100,9 +140,11 @@ def summarise_log_errors(service: str) -> dict[str, Any]:
     first_seen: dict[str, str] = {}
     last_seen: dict[str, str] = {}
     warnings: list[str] = []
+    unparsed = 0
     for line in _lines_for(service):
         parsed = _LOG_LINE.match(line)
         if parsed is None:
+            unparsed += 1
             continue
         if parsed["level"] == "WARN":
             warnings.append(line)
@@ -123,12 +165,13 @@ def summarise_log_errors(service: str) -> dict[str, Any]:
             for shape, count in counts.most_common()
         ],
         "warnings": warnings,
+        "unparsed_lines_skipped": unparsed,
     }
 
 
 def search_runbooks(query: str, limit: int = 3) -> list[dict[str, Any]]:
     """Runbooks ranked by how many distinct query terms they contain."""
-    terms = set(_WORD.findall(query.lower()))
+    terms = {t for t in _WORD.findall(query.lower()) if t not in _STOPWORDS and len(t) > 2}
     hits: list[dict[str, Any]] = []
     for runbook_id, body in _runbooks().items():
         score = len(terms & set(_WORD.findall(body.lower())))

@@ -89,9 +89,14 @@ async def run_incident(
     limits = limits or RunLimits()
     run_id = run_id or uuid4().hex
     translator = EventTranslator(WORKER_NAMES)
-    orchestrator = build_orchestrator(
-        models, trace_attributes={"incident.id": incident.id, "session.id": run_id}
-    )
+    try:
+        orchestrator = build_orchestrator(
+            models, trace_attributes={"incident.id": incident.id, "session.id": run_id}
+        )
+    except Exception as error:
+        logger.exception("Could not build the orchestrator")
+        yield RunFailed(error=redact(f"The orchestrator could not be set up: {error}"))
+        return
 
     yield RunStarted(
         run_id=run_id,

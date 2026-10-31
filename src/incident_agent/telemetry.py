@@ -18,6 +18,11 @@ def configure_telemetry(settings: Settings) -> bool:
         # Something already owns tracing: on AgentCore that is `opentelemetry-instrument` (ADOT).
         return False
 
+    # Values from `.env` are not in os.environ, and the OTel SDK reads only os.environ.
+    if settings.otel_exporter_otlp_endpoint:
+        os.environ.setdefault("OTEL_EXPORTER_OTLP_ENDPOINT", settings.otel_exporter_otlp_endpoint)
+    if settings.otel_service_name:
+        os.environ.setdefault("OTEL_SERVICE_NAME", settings.otel_service_name)
     otlp = bool(os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT"))
     if not otlp and not settings.otel_console_export:
         return False

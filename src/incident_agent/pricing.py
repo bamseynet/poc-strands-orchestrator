@@ -27,7 +27,10 @@ _MODEL_NAME = re.compile(r"claude-[a-z0-9-]+")
 def usd_for(model_id: str, usage: Usage) -> float | None:
     """Price `usage` on any id form (bare, or geo/global profile). None if the model is unknown."""
     match = _MODEL_NAME.search(model_id)
-    prices = _PRICES_PER_MTOK.get(match[0]) if match else None
+    # Real ids can carry a date or version suffix, e.g. claude-opus-5-5-20260101-v1:0.
+    prices = next(
+        (p for name, p in _PRICES_PER_MTOK.items() if match and match[0].startswith(name)), None
+    )
     if prices is None:
         return None
     return (usage.input_tokens * prices[0] + usage.output_tokens * prices[1]) / 1_000_000

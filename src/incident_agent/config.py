@@ -27,3 +27,8 @@ class Settings(BaseSettings):
 
     # Prints spans locally. For a collector, set the standard OTEL_EXPORTER_OTLP_ENDPOINT instead.
     otel_console_export: bool = False
+
+    # The standard OTEL variables. pydantic-settings reads `.env` without exporting it, and the
+    # OTel SDK reads only the real environment, so telemetry.py copies these across.
+    otel_exporter_otlp_endpoint: str | None = None
+    otel_service_name: str | None = None

@@ -300,3 +300,17 @@ class TestLiveness:
                     seen_tool_call.set()
 
         await asyncio.wait_for(consume(), TIMEOUT_S)
+
+
+async def test_a_failure_while_building_the_orchestrator_becomes_an_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from incident_agent import runner
+
+    def boom(*args: Any, **kwargs: Any) -> None:
+        raise RuntimeError("bad model config")
+
+    monkeypatch.setattr(runner, "build_orchestrator", boom)
+    events = await run(Team([Turn()]), incident())
+    assert events[-1].type == "run_failed"
+    assert "bad model config" in events[-1].error  # type: ignore[union-attr]

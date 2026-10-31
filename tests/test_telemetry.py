@@ -1,5 +1,6 @@
 """OTel wiring: spans for the orchestrator and each worker, joined up in one trace."""
 
+import os
 from collections.abc import Iterator
 from typing import Any
 
@@ -98,6 +99,17 @@ class TestConfigure:
         monkeypatch.setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://collector:4318")
         assert telemetry.configure_telemetry(Settings(_env_file=None)) is True
         assert FakeStrandsTelemetry.instances[0].exporters == ["otlp"]
+
+    def test_an_endpoint_from_the_dotenv_file_reaches_the_otel_sdk(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # pydantic-settings reads `.env` without exporting it; the OTel SDK reads only os.environ.
+        settings = Settings(_env_file=None, otel_exporter_otlp_endpoint="http://collector:4318")
+        monkeypatch.setenv("OTEL_SERVICE_NAME", "preset")  # restores the variable afterwards
+        assert telemetry.configure_telemetry(settings) is True
+        assert os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] == "http://collector:4318"
+        assert FakeStrandsTelemetry.instances[0].exporters == ["otlp"]
+        monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 
     def test_console_export_can_be_switched_on_for_local_debugging(self) -> None:
         settings = Settings(_env_file=None, otel_console_export=True)
