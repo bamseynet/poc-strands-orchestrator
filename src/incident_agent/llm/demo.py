@@ -24,7 +24,9 @@ _LOGS, _RUNBOOK, _IMPACT, _COMMS = (
     "comms_drafter",
 )
 
-_FAILING_TERMS = ("fail", "error", "5xx", "503", "timeout", "crash", "outage", "latency", "down\\b")
+_FAILING_TERMS = ("fail", "error", "5xx", "503", "timeout", "crash", "outage", "latency")
+# Whole words only: "down" must not match "download" or "shutdown".
+_FAILING_WORDS = ("down",)
 _ALL_QUIET_TERMS = ("nothing is failing", "nothing is broken")
 _PROCEDURE_TERMS = ("certificate", "renewal", "procedure", "expir")
 _IMPACT_TERMS = ("who is affected", "which services", "blast radius", "affected", "impact")
@@ -42,10 +44,13 @@ def choose_workers(incident: dict[str, Any]) -> set[str]:
     text = f"{incident['title']} {incident['description']}".lower()
     urgent = incident["severity"] in _URGENT
 
-    def mentions(terms: Iterable[str]) -> bool:
-        return any(re.search(rf"\b{term}", text) for term in terms)
+    def mentions(terms: Iterable[str], *, whole_word: bool = False) -> bool:
+        end = r"\b" if whole_word else ""
+        return any(re.search(rf"\b{re.escape(term)}{end}", text) for term in terms)
 
-    failing = mentions(_FAILING_TERMS) and not mentions(_ALL_QUIET_TERMS)
+    failing = (
+        mentions(_FAILING_TERMS) or mentions(_FAILING_WORDS, whole_word=True)
+    ) and not mentions(_ALL_QUIET_TERMS)
     chosen = set()
     if failing:
         chosen.add(_LOGS)
@@ -223,8 +228,9 @@ def _find_runbook(request: ScriptedRequest) -> TurnOutcome:
     results = _results(request)
     if not results:
         return Turn(tool_calls=[ToolCall("search_runbooks", {"query": _prompt(request)})])
-    if not results[-1].ok:
-        return Turn(text=f"Could not read the runbooks: {results[-1].text}")
+    failed = next((r for r in results if not r.ok), None)
+    if failed is not None:
+        return Turn(text=f"Could not read the runbooks: {failed.text}")
     hits = json.loads(results[0].text)
     if not hits:
         return Turn(text="No runbook matches these symptoms.")

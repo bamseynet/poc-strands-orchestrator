@@ -136,3 +136,10 @@ def test_keywords_match_whole_words_not_fragments() -> None:
     }
     assert "log_analysis" not in choose_workers(quiet)
     assert "log_analysis" in choose_workers({**quiet, "title": "Service is down"})
+
+
+def test_a_whole_word_down_at_the_very_end_still_counts() -> None:
+    from incident_agent.llm.demo import choose_workers
+
+    incident = {"title": "Checkout is down", "description": "", "severity": "sev4"}
+    assert "log_analysis" in choose_workers(incident)

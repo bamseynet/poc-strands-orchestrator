@@ -211,6 +211,8 @@ class EventTranslator:
         return []
 
     def _on_worker_message(self, run: WorkerRun, message: Mapping[str, Any]) -> list[RunEvent]:
+        if run.status != "running":
+            return []  # Stopped by force_stop: a late message must not revive it.
         usage = _usage_of(message)
         run.usage.input_tokens += usage.input_tokens
         run.usage.output_tokens += usage.output_tokens
@@ -225,8 +227,7 @@ class EventTranslator:
             self._tool_names[(run.tool_use_id, tool_use["toolUseId"])] = tool_use["name"]
             detail = json.dumps(tool_use["input"])
             events.append(self._step(run, "tool_call", name=tool_use["name"], detail=detail))
-        # A run already stopped (force_stop) stays stopped: a late message must not revive it.
-        if not tool_uses and run.status == "running":
+        if not tool_uses:
             events.append(self._finish_with_text(run, text))
         return events
 
