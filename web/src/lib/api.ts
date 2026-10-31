@@ -1,3 +1,4 @@
+import { sha256HexSync } from "./sha256";
 import { parseSse } from "./sse";
 import type { ClientConfig, Incident, RunEvent, RunRequest } from "./types";
 
@@ -12,11 +13,10 @@ async function getJson<T>(path: string): Promise<T> {
 export const fetchConfig = () => getJson<ClientConfig>("/api/config");
 export const fetchSamples = () => getJson<Incident[]>("/api/samples");
 
-async function sha256Hex(text: string): Promise<string> {
-  // crypto.subtle exists only in secure contexts (HTTPS, or localhost).
-  if (!globalThis.crypto?.subtle) {
-    throw new ApiError("Open this page over HTTPS or from localhost to start a run.");
-  }
+/** SHA-256 as hex. Prefers crypto.subtle, which browsers expose only in secure contexts (HTTPS or
+ *  localhost); on plain HTTP, e.g. a LAN address from a phone, falls back to a pure-TS version. */
+export async function sha256Hex(text: string): Promise<string> {
+  if (!globalThis.crypto?.subtle) return sha256HexSync(text);
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }

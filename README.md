@@ -27,7 +27,8 @@ make dev        # open http://localhost:5173
 Submit an incident and watch the orchestrator's plan and each worker's progress as they stream, then
 read the report with its per-worker traces and token and cost estimate. Try several samples to see
 the team change, and simulate a worker failure to see the run degrade. Set `API_PORT` or `WEB_PORT`
-if those ports are taken.
+if those ports are taken. The dev server is also reachable from other devices on your network (for
+example a phone at `http://192.168.x.x:5173`); runs work over plain HTTP there.
 
 Without the UI:
 
