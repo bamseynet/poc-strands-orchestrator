@@ -337,3 +337,7 @@ async def test_failure_simulation_is_not_offered_when_the_agent_is_remote() -> N
 
 def test_an_access_token_with_stray_whitespace_is_stripped() -> None:
     assert ApiSettings(_env_file=None, api_access_token=" abc\n").api_access_token == "abc"
+
+
+def test_the_transport_outlasts_the_agents_own_run_deadline() -> None:
+    assert backends._AGENTCORE_CLIENT_CONFIG.read_timeout > Settings(_env_file=None).run_timeout_s

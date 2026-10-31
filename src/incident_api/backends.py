@@ -22,8 +22,10 @@ from incident_api.settings import ApiSettings
 logger = logging.getLogger(__name__)
 
 # The agent can think for minutes between events. Retrying would start a second, billable run.
+# The read timeout sits just above the agent's own 300s run deadline (and below the API Lambda's
+# 6 minutes), so the agent's explanation of a timeout arrives before the transport gives up.
 _AGENTCORE_CLIENT_CONFIG = Config(
-    connect_timeout=10, read_timeout=300, retries={"total_max_attempts": 1}
+    connect_timeout=10, read_timeout=330, retries={"total_max_attempts": 1}
 )
 
 
@@ -78,22 +80,19 @@ class AgentCoreBackend:
         # A read blocks until it has chunk_size bytes, and these frames are small and minutes
         # apart, so the default of 1 KiB would hold progress back. One byte returns what is there.
         chunks = body.iter_chunks(chunk_size=1)
-        finished = False
         try:
             async for data in _sse_data(chunks):
                 event = _parse_frame(data)
-                finished = isinstance(event, ReportReady | RunFailed)
                 yield event
-                if finished:
+                if isinstance(event, ReportReady | RunFailed):
                     return
-            if not finished:
-                yield RunFailed(error="The agent's stream ended before the run finished.")
+            yield RunFailed(error="The agent's stream ended before the run finished.")
         finally:
             # Dropping the connection is what stops the remote run and its spending.
             body.close()
 
 
-_FRAME_END = (b"\n\n", b"\r\n\r\n")
+_FRAME_END = (b"\n\n", b"\r\n\r\n", b"\n\r\n")
 
 
 def _next_frame_bytes(chunks: Iterator[bytes]) -> bytes | None:
