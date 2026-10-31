@@ -124,8 +124,18 @@ async def run_incident(
     deadline = loop.time() + limits.timeout_s
     synthesis: IncidentSynthesis | None = None
     failure: str | None = None
+    backlog: int | None = None
     try:
         while True:
+            if loop.time() >= deadline:
+                # Work already produced is not thrown away, but only that much: a slow client keeps
+                # the queue non-empty, and a deadline checked only while waiting would never fire.
+                if backlog is None:
+                    backlog = raw_events.qsize()
+                if backlog == 0:
+                    failure = f"The run hit its {limits.timeout_s:g}s deadline before finishing."
+                    break
+                backlog -= 1
             try:
                 # Events that have already arrived are never lost to the deadline, and timing each
                 # wait keeps it out of the consumer's code: an asyncio.timeout() block held open

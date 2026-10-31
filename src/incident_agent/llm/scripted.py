@@ -138,6 +138,7 @@ def _chunks(turn: Turn, request: ScriptedRequest) -> list[StreamEvent]:
         chunks.extend(
             {"contentBlockDelta": {"delta": {"text": word}}}
             for word in turn.text.replace(" ", " \0").split("\0")
+            if word
         )
         chunks.append({"contentBlockStop": {}})
     for call in turn.tool_calls:

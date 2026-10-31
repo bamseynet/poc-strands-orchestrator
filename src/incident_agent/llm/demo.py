@@ -24,7 +24,7 @@ _LOGS, _RUNBOOK, _IMPACT, _COMMS = (
     "comms_drafter",
 )
 
-_FAILING_TERMS = ("fail", "error", "5xx", "503", "timeout", "crash", "outage", "latency", "down")
+_FAILING_TERMS = ("fail", "error", "5xx", "503", "timeout", "crash", "outage", "latency", "down\\b")
 _ALL_QUIET_TERMS = ("nothing is failing", "nothing is broken")
 _PROCEDURE_TERMS = ("certificate", "renewal", "procedure", "expir")
 _IMPACT_TERMS = ("who is affected", "which services", "blast radius", "affected", "impact")
@@ -43,7 +43,7 @@ def choose_workers(incident: dict[str, Any]) -> set[str]:
     urgent = incident["severity"] in _URGENT
 
     def mentions(terms: Iterable[str]) -> bool:
-        return any(term in text for term in terms)
+        return any(re.search(rf"\b{term}", text) for term in terms)
 
     failing = mentions(_FAILING_TERMS) and not mentions(_ALL_QUIET_TERMS)
     chosen = set()
@@ -223,6 +223,8 @@ def _find_runbook(request: ScriptedRequest) -> TurnOutcome:
     results = _results(request)
     if not results:
         return Turn(tool_calls=[ToolCall("search_runbooks", {"query": _prompt(request)})])
+    if not results[-1].ok:
+        return Turn(text=f"Could not read the runbooks: {results[-1].text}")
     hits = json.loads(results[0].text)
     if not hits:
         return Turn(text="No runbook matches these symptoms.")
@@ -245,6 +247,8 @@ def _assess_impact(request: ScriptedRequest) -> TurnOutcome:
         if not services:
             return Turn(text="The brief names no service I can find in the dependency map.")
         return Turn(tool_calls=[ToolCall("blast_radius", {"service": services[0]})])
+    if not results[0].ok:
+        return Turn(text=f"Could not read the dependency map: {results[0].text}")
     radius = json.loads(results[0].text)
     dependents = ", ".join(d["service"] for d in radius["dependents"]) or "none"
     customer = ", ".join(radius["customer_facing_impacted"]) or "none"

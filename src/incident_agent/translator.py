@@ -225,7 +225,8 @@ class EventTranslator:
             self._tool_names[(run.tool_use_id, tool_use["toolUseId"])] = tool_use["name"]
             detail = json.dumps(tool_use["input"])
             events.append(self._step(run, "tool_call", name=tool_use["name"], detail=detail))
-        if not tool_uses:
+        # A run already stopped (force_stop) stays stopped: a late message must not revive it.
+        if not tool_uses and run.status == "running":
             events.append(self._finish_with_text(run, text))
         return events
 

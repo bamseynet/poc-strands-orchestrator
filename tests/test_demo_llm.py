@@ -124,3 +124,15 @@ async def test_models_can_be_reused_across_runs() -> None:
     models = build_models(settings())
     for _ in range(2):
         assert report_from(await run(models, sample("batch-disk-full"))).status == "complete"
+
+
+def test_keywords_match_whole_words_not_fragments() -> None:
+    from incident_agent.llm.demo import choose_workers
+
+    quiet = {
+        "title": "Planned shutdown of reporting-batch",
+        "description": "Scheduled maintenance. Users will download reports later.",
+        "severity": "sev4",
+    }
+    assert "log_analysis" not in choose_workers(quiet)
+    assert "log_analysis" in choose_workers({**quiet, "title": "Service is down"})

@@ -314,3 +314,37 @@ async def test_a_failure_while_building_the_orchestrator_becomes_an_event(
     events = await run(Team([Turn()]), incident())
     assert events[-1].type == "run_failed"
     assert "bad model config" in events[-1].error
+
+
+def test_a_force_stopped_worker_is_not_revived_by_a_late_message() -> None:
+    from incident_agent.schemas import WorkerRun
+    from incident_agent.translator import EventTranslator
+
+    translator = EventTranslator(["log_analysis"])
+    run = WorkerRun(tool_use_id="t1", worker="log_analysis", turn=1, task="x", started_ms=0)
+    translator._runs["t1"] = run
+    translator._finish(run, error="stopped")
+    late = {"role": "assistant", "content": [{"text": "all done"}]}
+    translator._on_worker_message(run, late)
+    assert run.status == "failed"
+    assert run.error == "stopped"
+
+
+async def test_a_slow_client_cannot_keep_a_run_alive_past_its_deadline() -> None:
+    # The model keeps producing events after the deadline and the client is slower than the model,
+    # so the queue is never empty. A deadline checked only while waiting would never fire.
+    async def pause() -> None:
+        await asyncio.sleep(0.02)
+
+    team = Team(lambda request: Turn(tool_calls=[ToolCall("record_plan", {"rationale": "again"})]))
+    team.orchestrator_model.before_turn = pause
+    events: list[RunEvent] = []
+    started = time.monotonic()
+    limits = RunLimits(timeout_s=0.1, turns=40)
+    async for event in run_incident(incident(), team, limits=limits):
+        events.append(event)
+        await asyncio.sleep(0.05)
+    assert time.monotonic() - started < 3
+    last = events[-1]
+    assert last.type == "run_failed"
+    assert "deadline" in last.error
