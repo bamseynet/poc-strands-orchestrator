@@ -9,12 +9,17 @@ export async function* parseSse(stream: ReadableStream<Uint8Array>): AsyncGenera
   // Stream mode holds back a multi-byte character split across two chunks.
   const decoder = new TextDecoder();
   let buffer = "";
+  // A "\r" ending a chunk may be the first half of a CRLF, so it waits for the next chunk.
+  let heldCr = "";
   try {
     for (;;) {
       const { done, value } = await reader.read();
       if (done) return;
       // The SSE spec allows CRLF line endings; a proxy may use them.
-      buffer += decoder.decode(value, { stream: true }).replace(/\r\n?/g, "\n");
+      let text = heldCr + decoder.decode(value, { stream: true });
+      heldCr = text.endsWith("\r") ? "\r" : "";
+      if (heldCr) text = text.slice(0, -1);
+      buffer += text.replace(/\r\n?/g, "\n");
 
       let boundary = buffer.indexOf("\n\n");
       while (boundary !== -1) {

@@ -40,6 +40,12 @@ describe("parseSse", () => {
     ]);
   });
 
+  it("does not invent a frame boundary when CRLF is split across chunks", async () => {
+    // One frame whose JSON spans two data lines, with the CRLF between them split in two chunks.
+    const chunks = streamOf('data: {"x":\r', '\ndata: 1}\r\n\r\n');
+    expect(await collect(chunks)).toEqual([{ x: 1 }]);
+  });
+
   it("ignores heartbeat comments", async () => {
     const body = ': heartbeat\n\ndata: {"x":1}\n\n: heartbeat\n\n';
     expect(await collect(streamOf(body))).toEqual([{ x: 1 }]);

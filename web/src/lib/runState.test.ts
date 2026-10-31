@@ -93,6 +93,11 @@ describe("reduceRun", () => {
     expect(state.phase).toBe("failed");
     expect(state.error).toBe("no credentials");
   });
+
+  it("stops every running worker when the server gives up on the run", () => {
+    const state = replay([started, { type: "run_failed", error: "boom" }]);
+    expect(state.workers.every((w) => w.status !== "running")).toBe(true);
+  });
 });
 
 describe("replaying real captured runs", () => {

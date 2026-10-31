@@ -130,7 +130,8 @@ export function reduceRun(state: RunState, event: RunEvent): RunState {
     case "report_ready":
       return { ...state, phase: "done", synthesising: false, report: event.report };
     case "run_failed":
-      return { ...state, phase: "failed", synthesising: false, error: event.error };
+      // Nothing is still running once the server has given up, so no worker may keep spinning.
+      return endRunLocally(state, "failed", event.error);
     default:
       // Tolerate event types added by a newer server.
       return state;
