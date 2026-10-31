@@ -118,7 +118,7 @@ def list_log_sources() -> dict[str, dict[str, Any]]:
 
 def _level_matches(actual: str, wanted: str) -> bool:
     """ERROR also covers FATAL and CRITICAL, as it does in `summarise_log_errors`."""
-    wanted = wanted.upper()
+    wanted = {"WARNING": "WARN"}.get(wanted := wanted.strip().upper(), wanted)
     return actual in _ERROR_LEVELS if wanted == "ERROR" else actual == wanted
 
 

@@ -42,7 +42,7 @@ def search_logs(
 
     Args:
         service: Service name, for example payments-api.
-        level: Only this level: INFO, WARN or ERROR.
+        level: Only this level: INFO, WARN or ERROR (ERROR also covers FATAL and CRITICAL).
         contains: Only lines containing this text, ignoring case.
         limit: Maximum lines to return.
     """

@@ -170,3 +170,10 @@ def test_searching_for_errors_also_finds_fatal_lines(monkeypatch: pytest.MonkeyP
     lines = ("2026-01-01T00:00:00Z FATAL svc [x] out of memory",)
     monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
     assert knowledge.search_logs("svc", level="ERROR")["lines"] == list(lines)
+
+
+@pytest.mark.parametrize("level", ["warn", "WARNING", " WARN "])
+def test_level_names_are_forgiving_and_stay_exact_for_warnings(level: str) -> None:
+    result = knowledge.search_logs("payments-api", level=level)
+    assert result["total_matches"] > 0
+    assert all(" WARN " in line for line in result["lines"])
