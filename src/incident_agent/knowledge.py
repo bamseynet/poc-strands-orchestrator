@@ -115,7 +115,7 @@ def list_log_sources() -> dict[str, dict[str, Any]]:
 
 
 def search_logs(
-    service: str, level: str | None = None, contains: str | None = None, limit: int = 50
+    service: str, level: str | None = None, contains: str | None = None, limit: int = _MAX_LINES
 ) -> dict[str, Any]:
     """Log lines for a service, optionally filtered; `total_matches` ignores `limit`."""
     matches: list[str] = []
@@ -184,7 +184,7 @@ def summarise_log_errors(service: str) -> dict[str, Any]:
 
 def search_runbooks(query: str, limit: int = 3) -> list[dict[str, Any]]:
     """Runbooks ranked by how many distinct query terms they contain."""
-    terms = {t for t in _WORD.findall(query.lower()) if t not in _STOPWORDS and len(t) > 2}
+    terms = {t for t in _WORD.findall(query.lower()) if t not in _STOPWORDS and len(t) > 1}
     hits: list[dict[str, Any]] = []
     for runbook_id, body in _runbooks().items():
         score = len(terms & set(_WORD.findall(body.lower())))

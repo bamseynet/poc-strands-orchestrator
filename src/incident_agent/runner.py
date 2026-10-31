@@ -166,7 +166,9 @@ async def run_incident(
                 if isinstance(result.structured_output, IncidentSynthesis):
                     synthesis = result.structured_output
                 else:
-                    failure = f"The orchestrator stopped without a report: {result.stop_reason}."
+                    failure = redact(
+                        f"The orchestrator stopped without a report: {result.stop_reason}."
+                    )
     finally:
         await _stop(orchestrator, consumer, limits.cancel_grace_s)
 

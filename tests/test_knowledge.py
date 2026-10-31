@@ -143,3 +143,12 @@ def test_different_status_codes_are_not_merged_into_one_error_group(
     monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
     groups = knowledge.summarise_log_errors("svc")["error_groups"]
     assert {g["count"] for g in groups} == {2, 1}
+
+
+def test_a_short_but_meaningful_term_like_db_counts_in_runbook_ranking() -> None:
+    assert knowledge.search_runbooks("db")[0]["runbook_id"] == "db-connection-exhaustion"
+
+
+def test_an_unfiltered_log_search_returns_every_line_of_a_bundled_log() -> None:
+    total = knowledge.list_log_sources()["payments-api"]["lines"]
+    assert len(knowledge.search_logs("payments-api")["lines"]) == total

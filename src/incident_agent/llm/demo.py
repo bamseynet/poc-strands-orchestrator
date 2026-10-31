@@ -166,8 +166,8 @@ def _synthesise(incident: dict[str, Any], results: list[_Result]) -> dict[str, A
     comms = by_tool.get(_COMMS)
 
     summary = f"Simulated synthesis: {incident['title']} ({incident['severity']})."
-    if impact:
-        summary += f" {impact.text.splitlines()[0]}"
+    if impact and (first_line := impact.text.strip().splitlines()[:1]):
+        summary += f" {first_line[0]}"
     actions = _NUMBERED_STEP.findall(runbook.text) if runbook else []
     return {
         "summary": summary,

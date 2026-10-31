@@ -36,7 +36,7 @@ def summarise_log_errors(service: str) -> str:
 
 @tool
 def search_logs(
-    service: str, level: str | None = None, contains: str | None = None, limit: int = 50
+    service: str, level: str | None = None, contains: str | None = None, limit: int = 200
 ) -> str:
     """Return raw log lines for a service, optionally filtered.
 
