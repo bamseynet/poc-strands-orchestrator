@@ -3,7 +3,7 @@
 from typing import Any, Literal
 
 import boto3
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,6 +20,12 @@ class ApiSettings(BaseSettings):
     # inprocess runs the agent inside the API. agentcore calls it on Bedrock AgentCore Runtime.
     agent_backend: Literal["inprocess", "agentcore"] = "inprocess"
     agent_runtime_arn: str | None = None
+
+    @field_validator("api_access_token")
+    @classmethod
+    def _strip_token(cls, token: str | None) -> str | None:
+        # A stray newline or space from a shell or .env file would otherwise lock everyone out.
+        return token.strip() if token is not None else None
 
 
 def resolve_api_settings(settings: ApiSettings, secrets_client: Any = None) -> ApiSettings:

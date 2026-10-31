@@ -21,6 +21,13 @@ describe("bedrockInvokeStatements", () => {
     expect(model.Condition).toEqual({ StringEquals: { "bedrock:InferenceProfileArn": PROFILE } });
   });
 
+  it("accepts a dated, versioned model id", () => {
+    const [statement] = render("anthropic.claude-opus-5-5-20260101-v1:0");
+    expect(statement.Resource).toBe(
+      "arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-opus-5-5-20260101-v1:0",
+    );
+  });
+
   it("names exact models, with no wildcard in the model id", () => {
     const json = JSON.stringify(render("eu.anthropic.claude-haiku-5-5"));
     expect(json).toContain("foundation-model/anthropic.claude-haiku-5-5");

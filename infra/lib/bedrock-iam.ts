@@ -3,7 +3,7 @@ import { Effect, PolicyStatement } from "aws-cdk-lib/aws-iam";
 
 const INVOKE_ACTIONS = ["bedrock:InvokeModel", "bedrock:InvokeModelWithResponseStream"];
 // An optional geo or global prefix makes this an inference profile id. Exact models only.
-const MODEL_ID = /^(?:(us|ca|eu|au|jp|global)\.)?(anthropic\.claude-[a-z0-9-]+)$/;
+const MODEL_ID = /^(?:(us|ca|eu|au|jp|global)\.)?(anthropic\.claude-[a-z0-9-]+(?::\d+)?)$/;
 
 /**
  * Least-privilege access to one model.

@@ -84,7 +84,7 @@ class AgentCoreBackend:
                 event = _parse_frame(data)
                 finished = isinstance(event, ReportReady | RunFailed)
                 yield event
-                if isinstance(event, RunFailed):
+                if finished:
                     return
             if not finished:
                 yield RunFailed(error="The agent's stream ended before the run finished.")
@@ -93,12 +93,29 @@ class AgentCoreBackend:
             body.close()
 
 
+_FRAME_END = (b"\n\n", b"\r\n\r\n")
+
+
+def _next_frame_bytes(chunks: Iterator[bytes]) -> bytes | None:
+    """Everything up to the end of the next frame, or None at the end of the stream.
+
+    The body is read a byte at a time (see `_stream`), so gathering a whole frame here costs one
+    thread hop per frame instead of one per byte.
+    """
+    gathered = bytearray()
+    for chunk in chunks:
+        gathered += chunk
+        if gathered.endswith(_FRAME_END):
+            break
+    return bytes(gathered) if gathered else None
+
+
 async def _sse_data(chunks: Iterator[bytes]) -> AsyncGenerator[str, None]:
     """The `data` of each SSE frame. Reads in a thread, because the body is a blocking stream."""
     # Incremental, because a multi-byte character can be split across two chunks.
     decoder = codecs.getincrementaldecoder("utf-8")()
     buffer = ""
-    while (chunk := await asyncio.to_thread(next, chunks, None)) is not None:
+    while (chunk := await asyncio.to_thread(_next_frame_bytes, chunks)) is not None:
         # The SSE spec allows CRLF. The buffer is kept whole, so a CR and LF split apart still join.
         buffer = (buffer + decoder.decode(chunk)).replace("\r\n", "\n")
         while "\n\n" in buffer:

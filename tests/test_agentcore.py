@@ -162,6 +162,12 @@ class TestAgentCoreBackend:
         events = await collect(backend_with(FakeAgentCoreClient(body)))
         assert isinstance(events[0], RunStarted)
 
+    async def test_nothing_after_a_terminal_event_is_reported(self) -> None:
+        terminal = {"type": "run_failed", "error": "x"}
+        body = FakeBody([frame(terminal), b'data: {"type":"garbage"}\n\n'])
+        events = await collect(backend_with(FakeAgentCoreClient(body)))
+        assert len(events) == 1
+
     async def test_survives_a_frame_split_across_chunks(self) -> None:
         raw = frame(run_started_json())
         client = FakeAgentCoreClient(FakeBody([raw[:20], raw[20:]]))
@@ -327,3 +333,7 @@ async def test_failure_simulation_is_not_offered_when_the_agent_is_remote() -> N
             headers={"X-Access-Token": "t"},
         )
     assert response.status_code == 400
+
+
+def test_an_access_token_with_stray_whitespace_is_stripped() -> None:
+    assert ApiSettings(_env_file=None, api_access_token=" abc\n").api_access_token == "abc"
