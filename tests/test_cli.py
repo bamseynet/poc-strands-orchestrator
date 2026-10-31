@@ -61,3 +61,16 @@ def test_a_failed_run_exits_non_zero(
     monkeypatch.setattr(cli, "build_models", lambda *_, **__: team)
     assert main(["--sample", "batch-disk-full"]) == 1
     assert "bedrock unavailable" in capsys.readouterr().out
+
+
+def test_a_misconfigured_llm_is_a_clean_error_not_a_traceback(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from incident_agent import __main__ as cli
+
+    def boom(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("no credentials")
+
+    monkeypatch.setattr(cli, "build_models", boom)
+    assert main(["--sample", "checkout-5xx"]) == 1
+    assert "no credentials" in capsys.readouterr().err

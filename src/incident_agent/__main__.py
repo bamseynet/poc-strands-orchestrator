@@ -84,7 +84,11 @@ async def _run(
         timeout_s=settings.run_timeout_s,
     )
     exit_code = 0
-    models = build_models(settings, simulate_failures=failures)
+    try:
+        models = build_models(settings, simulate_failures=failures)
+    except Exception as error:
+        print(f"Could not set up the {settings.llm_mode} LLM: {error}", file=sys.stderr)
+        return 1
     async for event in run_incident(incident, models, limits=limits):
         if isinstance(event, RunFailed):
             exit_code = 1

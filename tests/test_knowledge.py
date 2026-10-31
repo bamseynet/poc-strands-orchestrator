@@ -13,7 +13,9 @@ class TestLogs:
     ) -> None:
         lines = ("2026-01-01T00:00:00Z ERROR svc [x] boom", "    at Trace.continuation(foo)")
         monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
-        assert knowledge.search_logs("svc")["unparsed_lines_skipped"] == 1
+        everything = knowledge.search_logs("svc")
+        assert lines[1] in everything["lines"]
+        assert knowledge.search_logs("svc", level="ERROR")["unparsed_lines_skipped"] == 1
         assert knowledge.summarise_log_errors("svc")["unparsed_lines_skipped"] == 1
 
     def test_lists_the_bundled_sources(self) -> None:

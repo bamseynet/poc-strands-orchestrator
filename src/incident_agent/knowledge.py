@@ -116,20 +116,25 @@ def search_logs(
     service: str, level: str | None = None, contains: str | None = None, limit: int = 50
 ) -> dict[str, Any]:
     """Log lines for a service, optionally filtered; `total_matches` ignores `limit`."""
-    all_lines = _lines_for(service)
-    matches = [
-        line
-        for line in all_lines
-        if (parsed := _LOG_LINE.match(line))
-        and (level is None or parsed["level"] == level.upper())
-        and (contains is None or contains.lower() in line.lower())
-    ]
+    matches: list[str] = []
+    skipped = 0
+    for line in _lines_for(service):
+        parsed = _LOG_LINE.match(line)
+        if parsed is None:
+            # Lines in no standard format (stack-trace continuations) have no level. Keep them
+            # unless a level filter was asked for, and count any that the filter had to drop.
+            if level is None and (contains is None or contains.lower() in line.lower()):
+                matches.append(line)
+            elif level is not None:
+                skipped += 1
+        elif (level is None or parsed["level"] == level.upper()) and (
+            contains is None or contains.lower() in line.lower()
+        ):
+            matches.append(line)
     return {
         "service": service,
         "total_matches": len(matches),
-        # Lines that are not in the standard format (such as stack-trace continuations) cannot be
-        # filtered by level, so say how many were left out rather than hide them.
-        "unparsed_lines_skipped": sum(1 for line in all_lines if not _LOG_LINE.match(line)),
+        "unparsed_lines_skipped": skipped,
         "lines": matches[: max(0, min(limit, _MAX_LINES))],
     }
 
