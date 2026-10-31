@@ -194,6 +194,8 @@ class EventTranslator:
         data = stream_event["data"]
         if run is None or not isinstance(data, Mapping):
             return []
+        if run.status != "running":
+            return []  # Already finished or force-stopped: late events must not change it.
         if "data" in data:
             return [
                 WorkerTextDelta(tool_use_id=run.tool_use_id, worker=run.worker, text=data["data"])

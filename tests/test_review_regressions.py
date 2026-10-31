@@ -348,3 +348,16 @@ async def test_a_slow_client_cannot_keep_a_run_alive_past_its_deadline() -> None
     last = events[-1]
     assert last.type == "run_failed"
     assert "deadline" in last.error
+
+
+def test_late_stream_events_from_a_stopped_worker_are_ignored() -> None:
+    from incident_agent.schemas import WorkerRun
+    from incident_agent.translator import EventTranslator
+
+    translator = EventTranslator(["log_analysis"])
+    run = WorkerRun(tool_use_id="t1", worker="log_analysis", turn=1, task="x", started_ms=0)
+    translator._runs["t1"] = run
+    translator._finish(run, error="stopped")
+    late = {"tool_use": {"toolUseId": "t1"}, "data": {"data": "more text"}}
+    assert translator.feed({"tool_stream_event": late}) == []
+    assert run.trace == []

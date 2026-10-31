@@ -249,7 +249,10 @@ def _applicable_steps(runbook: str) -> str:
 def _assess_impact(request: ScriptedRequest) -> TurnOutcome:
     results = _results(request)
     if not results:
-        services = _known_services(_prompt(request))
+        prompt = _prompt(request)
+        # The brief names the failing service; others may only be mentioned in passing.
+        named = re.search(r"blast radius of (\S+) for:", prompt)
+        services = _known_services(named[1] if named else prompt)
         if not services:
             return Turn(text="The brief names no service I can find in the dependency map.")
         return Turn(tool_calls=[ToolCall("blast_radius", {"service": services[0]})])
