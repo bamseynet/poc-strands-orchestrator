@@ -13,6 +13,12 @@ dependencies = [
     "uvicorn[standard]~=0.38",
 ]
 
+[project.optional-dependencies]
+agentcore = [
+    "aws-opentelemetry-distro>=0.18.0",
+    "bedrock-agentcore~=1.25",
+]
+
 [dependency-groups]
 dev = [
     "httpx~=0.28",
@@ -54,5 +60,5 @@ files = ["src", "tests"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["boto3.*", "botocore.*"]
+module = ["boto3.*", "botocore.*", "bedrock_agentcore.*"]
 ignore_missing_imports = true

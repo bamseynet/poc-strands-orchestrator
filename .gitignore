@@ -25,3 +25,6 @@ web/dist/
 
 # Local browser-testing output
 .playwright-mcp/
+
+# CDK
+cdk.out/

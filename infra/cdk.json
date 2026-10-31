@@ -1,0 +1,7 @@
+{
+  "app": "npx tsx bin/app.ts",
+  "context": {
+    "bedrockModelId": "us.anthropic.claude-opus-5-5",
+    "bedrockWorkerModelId": "us.anthropic.claude-haiku-5-5"
+  }
+}

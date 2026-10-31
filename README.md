@@ -9,10 +9,11 @@ specialist workers on a cheaper model to call. They run in parallel where they a
 the orchestrator turns their findings into an incident summary, probable cause, recommended actions
 and a stakeholder message.
 
-> **Status.** The agent core, API and UI are here. The CDK infrastructure and deployment guide follow
-> in a later pull request. Everything has been tested offline with a fake LLM and a stubbed Bedrock
-> client. **It has not yet been run against live Bedrock**, because no AWS credentials were available
-> when it was built.
+> **Status.** Everything has been tested offline, with a fake LLM and a stubbed AWS client, and the
+> container images have been run locally against the AgentCore contract. **It has never run against
+> live Bedrock and the infrastructure has never been deployed**, because no AWS credentials were
+> available when it was built. Expect the first real deployment to find something. See
+> [Limitations](#limitations).
 
 ## Try it
 
@@ -159,6 +160,40 @@ wrong:
   its end. [`AbortableBedrockModel`](src/incident_agent/llm/bedrock.py) reads through a signal that
   stays set.
 
+## Deployed architecture
+
+```mermaid
+flowchart LR
+    B[Browser] --> CF[CloudFront]
+    CF -->|static files| S3[(Private S3 bucket)]
+    CF -->|"/api/*, signed by origin access control"| L["API on Lambda<br/>function URL, response streaming"]
+    L -.->|reads the access token at start-up| SM[(Secrets Manager)]
+    L -->|InvokeAgentRuntime, one session per run| AC["Agent on AgentCore Runtime<br/>Strands orchestrator and workers"]
+    AC -->|Opus 5.5 and Haiku 5.5| BR[Amazon Bedrock]
+    AC -.->|OTel spans through ADOT| CW[CloudWatch]
+```
+
+- **The agent runs on AgentCore Runtime,** which gives each session its own microVM, so nothing is
+  shared between incidents, and which handles scaling and streaming for long-running agents.
+- **The API runs on Lambda** with the [Lambda Web Adapter](https://github.com/awslabs/aws-lambda-web-adapter),
+  which runs the same FastAPI app inside a function and streams its responses. It scales to zero, so a
+  demo nobody is using costs next to nothing, where Fargate behind a load balancer would be billed all
+  the time. Its reserved concurrency of 5 doubles as a brake on spending.
+- **CloudFront serves one origin for both UI and API,** so there is no CORS to configure, and origin
+  access control means the bucket and the function URL can only be reached through it. This is why the
+  token travels in `X-Access-Token`, as CloudFront overwrites `Authorization` with its signature, and
+  why the UI sends a hash of each POST body, which CloudFront needs in order to sign it.
+- **The infrastructure is CDK in TypeScript.** The UI already brings Node to this repo, TypeScript is
+  where CDK's own documentation is strongest, and the tests assert directly on the synthesized template.
+  The stack uses the stable `CfnRuntime` resource rather than the alpha AgentCore construct, which keeps
+  every IAM statement explicit and avoids breaking changes between alpha releases.
+
+Least privilege is enforced by [tests on the template](infra/test/stack.test.ts). The agent can invoke
+exactly two models, only through their inference profiles. The API can't touch Bedrock at all: it can
+only invoke this one runtime and read its own token. X-Ray, ECR's token call and CloudWatch metrics use
+`Resource: "*"`, because those actions don't support anything narrower, and CDK's own helper for
+deploying the site files has a similar allowance for CloudFront invalidations.
+
 ## Trust, but verify the synthesis
 
 The LLM writes the conclusions, but it does not get to mark its own homework.
@@ -211,6 +246,85 @@ drift apart unnoticed.
 | Synthesis includes every worker | The final model call must contain each full output, the report must carry each verbatim, and a synthesis that drops a worker must be flagged |
 | Real provider behaviour | The real Bedrock provider against a stubbed AWS client: model routing per tier, request shape, the structured-output retry, and abandoning a stream when a run stops |
 | A stopped run stops | Disconnects and deadlines mid-flight leave no tasks running, make no further model calls, and close the Bedrock stream |
+
+## Tracing
+
+Strands emits OpenTelemetry spans for every agent, model call and tool call. Each worker's span nests
+inside the orchestrator's trace, and spans carry `incident.id` and `session.id`, so one trace shows the
+whole fan-out. [`telemetry.py`](src/incident_agent/telemetry.py) only decides where they go:
+
+| Where it runs | How to see the traces |
+| --- | --- |
+| Locally | Set `OTEL_CONSOLE_EXPORT=true`, or set `OTEL_EXPORTER_OTLP_ENDPOINT` to your collector |
+| AgentCore Runtime | The container starts under `opentelemetry-instrument` (ADOT), which sends spans to CloudWatch. Turn on [CloudWatch Transaction Search](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/observability-configure.html) once per account |
+
+## Deploy
+
+`make deploy` deploys to whichever AWS account you are logged in to, and **costs money**: see below. It
+has not been run by the author of this code, so treat these steps as untested and read the template first.
+
+You need Docker with arm64 support (`docker buildx`; on an x86 machine, [QEMU emulation](https://docs.docker.com/build/building/multi-platform/)),
+Node.js 22, uv, and AWS credentials that can deploy CloudFormation stacks.
+
+1. **Choose your Region and models.** The defaults in [`infra/cdk.json`](infra/cdk.json) are US inference
+   profiles. For another geography, change the prefix, for example to `eu.`, checking the
+   [model cards](https://docs.aws.amazon.com/bedrock/latest/userguide/model-cards.html) for what your
+   Region offers. Check too that [AgentCore Runtime](https://docs.aws.amazon.com/bedrock-agentcore/latest/devguide/agentcore-regions.html)
+   is available there.
+2. **Make sure you can use the models.** These are billed through AWS Marketplace, so invoke each one once
+   from an identity allowed to subscribe, as the deployed role deliberately isn't.
+3. **Bootstrap CDK**, once per account and Region: `cd infra && npx cdk bootstrap`.
+4. **Check what will be created:** `make synth`, then read `infra/cdk.out/IncidentOrchestrator.template.json`.
+5. **Deploy:** `make deploy`. The outputs include `SiteUrl` and `AccessTokenSecretArn`.
+6. **Get the access token**, which the UI asks for:
+   `aws secretsmanager get-secret-value --secret-id <AccessTokenSecretArn> --query SecretString --output text`.
+7. **Turn on Transaction Search** to see traces (see above).
+
+To remove everything: `cd infra && npx cdk destroy`.
+
+**What it costs.** Idle cost is small: CloudFront, S3, Lambda and AgentCore are all billed by use, and
+the secret is a small monthly charge. Model tokens are the real cost, at roughly $0.03 for a run judged
+by the simulated token counts. Real runs will differ, not least because thinking tokens are billed. Each
+run is capped at 500,000 tokens (`MAX_TOTAL_TOKENS`) and five can run at once. Set an
+[AWS budget](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html)
+all the same.
+
+`ReservedConcurrentExecutions` fails to deploy if your account has too little unreserved Lambda
+concurrency, which is common on new accounts. Lower it in `infra/lib/incident-stack.ts`, or ask for a
+quota increase.
+
+## Limitations
+
+- **Never run live.** The Bedrock path is tested against a stubbed client and the AgentCore contract
+  against a local container built for x86, so the real arm64 images, IAM policies, CloudFront signing
+  and streaming through Lambda are all unproven until someone deploys them.
+- **The real model's judgement is untested.** Tests prove the plumbing works for whatever the model
+  decides. Nothing here measures whether Opus picks good workers or reasons soundly. That needs evals.
+- **Cost figures are estimates** from Anthropic's list prices. Bedrock's rates may differ.
+- **A dropped connection can't be resumed,** because the run lives on the open response.
+- **Sample data only.** Logs, runbooks and the service map are small, fictional and bundled in the image.
+- **One shared access token** is a brake on spending, not user authentication.
+- **Prompt injection is reduced, not solved.** The agent reads untrusted text. Its tools are read-only
+  and it changes nothing, which is what limits the damage. Don't give it tools that act without adding
+  human approval.
+- **The spending brake is Lambda's reserved concurrency (5),** which counts every request, so five
+  long runs also throttle `/api/config` and `/api/samples`. It needs an account whose Lambda quota is
+  above 10 (new accounts start at 10, and Lambda keeps 10 unreserved), or lower the number in
+  `infra/lib/incident-stack.ts`. The API's own per-process run cap does not add to it.
+- **A hung model call** is only bounded by the client's 120s read timeout and the run's deadline. There
+  is no per-worker timeout.
+- **Refusals have no fallback.** A worker the model declines to answer is reported as failed, rather than
+  being retried on another model.
+
+## Next steps
+
+- Deploy it once and fix whatever that finds.
+- Add evals over a set of labelled incidents: did it pick sensible workers and reach the right cause?
+- Replace the bundled data with real sources behind MCP tools, for example through AgentCore Gateway.
+- Turn on prompt caching for the system prompts and tool definitions.
+- Add a human approval step before any action, if it ever gains tools that change things.
+- Replace the shared token with real sign-in, for example through AgentCore's inbound OAuth.
+- Persist runs, so a dropped connection can resume and past incidents can be reviewed.
 
 ## Licence
 
