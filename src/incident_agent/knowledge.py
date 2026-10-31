@@ -116,6 +116,12 @@ def list_log_sources() -> dict[str, dict[str, Any]]:
     return {service: {"lines": len(lines)} for service, lines in _log_lines().items()}
 
 
+def _level_matches(actual: str, wanted: str) -> bool:
+    """ERROR also covers FATAL and CRITICAL, as it does in `summarise_log_errors`."""
+    wanted = wanted.upper()
+    return actual in _ERROR_LEVELS if wanted == "ERROR" else actual == wanted
+
+
 def search_logs(
     service: str, level: str | None = None, contains: str | None = None, limit: int = _MAX_LINES
 ) -> dict[str, Any]:
@@ -131,7 +137,7 @@ def search_logs(
                 matches.append(line)
             elif level is not None:
                 skipped += 1
-        elif (level is None or parsed["level"] == level.upper()) and (
+        elif (level is None or _level_matches(parsed["level"], level)) and (
             contains is None or contains.lower() in line.lower()
         ):
             matches.append(line)

@@ -164,3 +164,9 @@ def test_fatal_lines_count_as_errors_and_decimals_group_together(
     monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
     groups = knowledge.summarise_log_errors("svc")["error_groups"]
     assert [g["count"] for g in groups] == [2]
+
+
+def test_searching_for_errors_also_finds_fatal_lines(monkeypatch: pytest.MonkeyPatch) -> None:
+    lines = ("2026-01-01T00:00:00Z FATAL svc [x] out of memory",)
+    monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
+    assert knowledge.search_logs("svc", level="ERROR")["lines"] == list(lines)
