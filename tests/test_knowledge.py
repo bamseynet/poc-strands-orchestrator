@@ -177,3 +177,17 @@ def test_level_names_are_forgiving_and_stay_exact_for_warnings(level: str) -> No
     result = knowledge.search_logs("payments-api", level=level)
     assert result["total_matches"] > 0
     assert all(" WARN " in line for line in result["lines"])
+
+
+def test_compound_code_keys_and_python_style_warnings_are_kept(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    lines = (
+        "2026-01-01T00:00:00Z ERROR svc [x] upstream error_code=502",
+        "2026-01-01T00:00:01Z ERROR svc [x] upstream error_code=503",
+        "2026-01-01T00:00:02Z WARNING svc [x] slow",
+    )
+    monkeypatch.setattr(knowledge, "_lines_for", lambda service: lines)
+    summary = knowledge.summarise_log_errors("svc")
+    assert len(summary["error_groups"]) == 2
+    assert len(summary["warnings"]) == 1

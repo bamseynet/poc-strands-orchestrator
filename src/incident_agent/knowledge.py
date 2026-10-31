@@ -19,9 +19,10 @@ _LOG_LINE = re.compile(
 # Values that differ between otherwise identical log lines.
 _VOLATILE = re.compile(r"\b(request_id=)\S+|\b(\w+=)\d+(?:\.\d+)?")
 # Numbers that identify a failure rather than vary between occurrences, so are never masked.
-_MEANINGFUL_KEYS = ("status=", "code=", "http_status=", "exit_code=", "errno=")
+_MEANINGFUL_KEYS = ("status=", "code=", "errno=")
 # Levels above WARN that all count as errors, so none are silently dropped from the summary.
 _ERROR_LEVELS = frozenset({"ERROR", "FATAL", "CRITICAL"})
+_WARN_LEVELS = frozenset({"WARN", "WARNING"})
 _WORD = re.compile(r"[a-z0-9]+")
 _MAX_LINES = 200
 # Common words that would otherwise let a long free-text query score every runbook alike.
@@ -118,8 +119,10 @@ def list_log_sources() -> dict[str, dict[str, Any]]:
 
 def _level_matches(actual: str, wanted: str) -> bool:
     """ERROR also covers FATAL and CRITICAL, as it does in `summarise_log_errors`."""
-    wanted = {"WARNING": "WARN"}.get(wanted := wanted.strip().upper(), wanted)
-    return actual in _ERROR_LEVELS if wanted == "ERROR" else actual == wanted
+    wanted = wanted.strip().upper()
+    if wanted == "ERROR":
+        return actual in _ERROR_LEVELS
+    return actual in _WARN_LEVELS if wanted in _WARN_LEVELS else actual == wanted
 
 
 def search_logs(
@@ -150,7 +153,7 @@ def search_logs(
 
 
 def _mask(match: re.Match[str]) -> str:
-    if (key := match[2]) and key.lower() in _MEANINGFUL_KEYS:
+    if (key := match[2]) and key.lower().endswith(_MEANINGFUL_KEYS):
         return match[0]
     return f"{match[1] or match[2]}#"
 
@@ -167,7 +170,7 @@ def summarise_log_errors(service: str) -> dict[str, Any]:
         if parsed is None:
             unparsed += 1
             continue
-        if parsed["level"] == "WARN":
+        if parsed["level"] in _WARN_LEVELS:
             warnings.append(line)
         elif parsed["level"] in _ERROR_LEVELS:
             shape = _VOLATILE.sub(_mask, parsed["message"])
