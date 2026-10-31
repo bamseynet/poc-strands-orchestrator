@@ -336,3 +336,22 @@ class TestSseStream:
         await asyncio.sleep(0.2)
         leftover = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         assert leftover == [], "no worker task may outlive the client"
+
+
+class TestReviewRegressions:
+    async def test_a_blank_access_token_means_no_auth_and_says_so(self) -> None:
+        settings = ApiSettings(_env_file=None, api_access_token="")
+        async with client_for(settings) as client:
+            config = (await client.get("/api/config")).json()
+        assert config["auth_required"] is False
+
+    async def test_a_backend_that_cannot_start_does_not_leak_run_slots(self) -> None:
+        class CannotStart:
+            def stream(self, incident: Incident, simulate_failures: Sequence[str]) -> Any:
+                raise RuntimeError("bad credentials")
+
+        settings = ApiSettings(_env_file=None, max_concurrent_runs=1)
+        async with client_for(settings, backend=CannotStart()) as client:
+            for _ in range(3):  # a leaked slot would turn the second attempt into a 429
+                with pytest.raises(RuntimeError, match="bad credentials"):
+                    await client.post("/api/runs", json={"incident": INCIDENT})

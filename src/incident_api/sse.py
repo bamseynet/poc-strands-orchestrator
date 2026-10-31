@@ -37,8 +37,11 @@ async def sse_stream(
             logger.exception("Run failed mid-stream")
             queue.put_nowait(RunFailed(error=redact(f"The run failed: {error}")))
         finally:
-            await cast(AsyncGenerator[RunEvent, None], events).aclose()
-            queue.put_nowait(_DONE)
+            try:
+                await cast(AsyncGenerator[RunEvent, None], events).aclose()
+            finally:
+                # Without this, a failing aclose leaves the consumer sending heartbeats forever.
+                queue.put_nowait(_DONE)
 
     pump_task = asyncio.create_task(pump())
     try:

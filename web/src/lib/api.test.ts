@@ -21,6 +21,14 @@ function headersOfLastCall(): Headers {
   return new Headers(fetchMock.mock.calls.at(-1)?.[1]?.headers);
 }
 
+describe("startRun in an insecure context", () => {
+  it("explains the problem instead of reporting a dropped connection", async () => {
+    vi.stubGlobal("crypto", {});
+    await expect(startRun(request)).rejects.toThrow(/HTTPS or from localhost/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("startRun", () => {
   it("posts the request and yields the stream's events", async () => {
     const body = streamOf('event: synthesis_started\ndata: {"type":"synthesis_started"}\n\n');

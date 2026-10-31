@@ -13,6 +13,10 @@ export const fetchConfig = () => getJson<ClientConfig>("/api/config");
 export const fetchSamples = () => getJson<Incident[]>("/api/samples");
 
 async function sha256Hex(text: string): Promise<string> {
+  // crypto.subtle exists only in secure contexts (HTTPS, or localhost).
+  if (!globalThis.crypto?.subtle) {
+    throw new ApiError("Open this page over HTTPS or from localhost to start a run.");
+  }
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }

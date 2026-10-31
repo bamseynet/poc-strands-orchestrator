@@ -81,8 +81,12 @@ class _RunResponse(StreamingResponse):
         try:
             await super().__call__(scope, receive, send)
         finally:
-            self._on_finished()
-            await cast(AsyncGenerator[str, None], self.body_iterator).aclose()
+            # Free the slot only once the run has been wound down, so the cap holds in a storm of
+            # disconnects.
+            try:
+                await cast(AsyncGenerator[str, None], self.body_iterator).aclose()
+            finally:
+                self._on_finished()
 
 
 def create_app(
@@ -99,7 +103,7 @@ def create_app(
     app = FastAPI(title="Incident orchestrator")
 
     def require_token(x_access_token: Annotated[str | None, Header()] = None) -> None:
-        if api.api_access_token is None:
+        if not api.api_access_token:
             return
         # Not Authorization: CloudFront's origin access control overwrites that with its signature.
         # Comparing bytes keeps a non-ASCII token an ordinary refusal rather than a TypeError.
@@ -120,7 +124,7 @@ def create_app(
         return ClientConfig(
             llm_mode=agent.llm_mode,
             can_simulate_failures=agent.llm_mode == "fake",
-            auth_required=api.api_access_token is not None,
+            auth_required=bool(api.api_access_token),
             orchestrator_model=agent.bedrock_model_id,
             worker_model=agent.bedrock_worker_model_id,
             workers=[
@@ -135,12 +139,17 @@ def create_app(
                 status.HTTP_400_BAD_REQUEST, "Simulated failures need LLM_MODE=fake."
             )
         slots.acquire()
-        events = run_backend.stream(request.incident, request.simulate_failures)
-        return _RunResponse(
-            sse_stream(events, api.sse_heartbeat_s),
-            on_finished=slots.release,
-            media_type="text/event-stream",
-            headers=_SSE_HEADERS,
-        )
+        try:
+            events = run_backend.stream(request.incident, request.simulate_failures)
+            return _RunResponse(
+                sse_stream(events, api.sse_heartbeat_s),
+                on_finished=slots.release,
+                media_type="text/event-stream",
+                headers=_SSE_HEADERS,
+            )
+        except BaseException:
+            # Building the models can fail (credentials, region) before any response owns the slot.
+            slots.release()
+            raise
 
     return app
