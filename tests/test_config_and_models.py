@@ -6,7 +6,6 @@ from typing import Any
 
 import boto3
 import pytest
-from botocore.exceptions import ClientError
 from pydantic import ValidationError
 from strands.models import BedrockModel
 
@@ -193,35 +192,29 @@ class TestRealProviderAgainstStubbedBedrock:
         inference = fake.calls[0].get("inferenceConfig", {})
         assert not {"temperature", "topP"} & set(inference)
 
-    async def test_survives_opus_55_rejecting_forced_tool_choice(
+    async def test_opus_55_prose_is_retried_for_json_without_forcing_a_tool(
         self, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        # Opus 5.5 returns this 400 for tool_choice any/tool. Strands forces the tool when a model
-        # answers in prose instead of calling it, so that retry must not kill the run.
-        rejection = ClientError(
-            {
-                "Error": {
-                    "Code": "ValidationException",
-                    "Message": 'tool_choice: type "tool" and "any" are not supported for this '
-                    "model.",
-                }
-            },
-            "ConverseStream",
-        )
+        # Opus 5.5 returns a 400 for tool_choice any/tool. Strands knows, so when the model answers
+        # in prose it retries with native structured output and auto tool choice instead.
+        payload = {**SYNTHESIS_INPUT, "summary": "from json"}
 
         def respond(request: dict[str, Any], call_number: int) -> dict[str, Any]:
             if call_number == 1:
                 return _stream({"text": "Here is my answer in prose."})
-            forced = set(request["toolConfig"]["toolChoice"]) & {"any", "tool"}
-            if forced:
-                raise rejection
-            return _synthesis_call()
+            assert not set(request["toolConfig"]["toolChoice"]) & {"any", "tool"}
+            assert "textFormat" in request["outputConfig"]
+            return _stream({"text": json.dumps(payload)})
 
         fake = FakeBedrock(respond)
-        models = build_models(bedrock_settings())
+        settings = bedrock_settings().model_copy(
+            update={"bedrock_model_id": "us.anthropic.claude-opus-5-5"}
+        )
+        models = build_models(settings)
         self._wire(models, fake, monkeypatch)
 
         report = report_from(await asyncio.wait_for(run(models), 10))
 
+        assert len(fake.calls) == 2
         assert report.synthesis_source == "orchestrator"
-        assert report.summary == "s"
+        assert report.summary == "from json"

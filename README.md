@@ -140,16 +140,27 @@ wrong:
   successful tool call, so its stop reason is inspected.
 - **Turn and token limits are shared.** Strands counts them across the whole request, workers
   included, so they are sized for the team.
-- **Forced `tool_choice` is unavailable on Opus 5.5.** Strands' structured output falls back when
-  Bedrock rejects it, and a test confirms this against a stubbed rejection.
+- **Forced `tool_choice` is unavailable on Opus 5.5.** If the model answers in prose instead of
+  calling the report tool, Strands knows not to force it, and retries with native structured output
+  and gets JSON text back. A test checks that request and reply against a stubbed client.
+- **A stopped run must also stop generating.** A cancelled agent clears its cancel signal before the
+  thread reading from Bedrock next checks it, so the response would keep generating and billing to
+  its end. [`AbortableBedrockModel`](src/incident_agent/llm/bedrock.py) reads through a signal that
+  stays set.
 
 ## Trust, but verify the synthesis
 
 The LLM writes the conclusions, but it does not get to mark its own homework.
 [`report.py`](src/incident_agent/report.py) adds each worker's raw output to the report directly from
-the run, flags any worker the synthesis failed to account for, and marks the report `degraded` if
-anything is missing. If the orchestrator fails after workers have finished, you still get their
-findings.
+the run, and marks the report `degraded` when the run shows the synthesis cannot be relied on:
+
+- a call failed with no success on the same brief, or a worker's tool calls all failed;
+- the synthesis ignores a worker, credits one that never ran, or was written before one answered;
+- the orchestrator asked for a worker that does not exist, or called no specialists at all.
+
+If the orchestrator fails after workers have finished, you still get their findings. These checks are
+structural: **they cannot tell you whether the LLM reasoned soundly from the evidence**, so `complete`
+means the evidence is all accounted for, not that the conclusion is right.
 
 Text from incidents, logs and runbooks is untrusted: it could contain instructions aimed at the model.
 It is delimited and described as data in the prompts, and tools are read-only with names checked
@@ -167,7 +178,8 @@ agents and event loop behind a scripted model.
 | Workers really run concurrently | An `asyncio.Barrier` every worker must reach while the others are mid-request. Sequential execution deadlocks, and a companion test proves that it does |
 | A failing worker degrades gracefully | Crashes, refusals, empty answers, duplicates, deadlines and a failing orchestrator, each asserting a usable report or a clear failure |
 | Synthesis includes every worker | The final model call must contain each full output, the report must carry each verbatim, and a synthesis that drops a worker must be flagged |
-| Real provider behaviour | The real `BedrockModel` against a stubbed AWS client: model routing per tier, request shape, recovery from a forced `tool_choice` rejection |
+| Real provider behaviour | The real Bedrock provider against a stubbed AWS client: model routing per tier, request shape, the structured-output retry, and abandoning a stream when a run stops |
+| A stopped run stops | Disconnects and deadlines mid-flight leave no tasks running, make no further model calls, and close the Bedrock stream |
 
 ## Licence
 

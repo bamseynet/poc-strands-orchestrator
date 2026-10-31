@@ -66,6 +66,7 @@ async def test_comms_waits_for_the_other_findings_and_uses_them() -> None:
     assert runs[COMMS].turn == 2
     assert {runs[w].turn for w in (LOGS, RUNBOOK, IMPACT)} == {1}
     assert "checkout-web" in runs[COMMS].task, "the brief carries the confirmed impact"
+    assert "take a payment" in runs[COMMS].output, "the whole impact reaches the draft"
 
 
 async def test_the_synthesis_draws_on_the_workers_and_says_it_is_simulated() -> None:
@@ -98,6 +99,7 @@ async def test_free_text_incident_without_a_known_service_still_completes() -> N
     report = report_from(await run(build_models(settings()), incident))
     assert report.worker_findings, "a failing incident still gets investigated"
     assert report.synthesis_source == "orchestrator"
+    assert "not established" in report.probable_cause.lower(), "no logs were read, so no claim"
 
 
 async def test_an_incident_with_no_signals_still_gets_a_runbook_search() -> None:

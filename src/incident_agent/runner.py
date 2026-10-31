@@ -1,6 +1,7 @@
 """Runs one incident from start to finish and streams what happens as typed events."""
 
 import asyncio
+import logging
 from collections.abc import AsyncIterator, Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -23,6 +24,8 @@ from incident_agent.schemas import (
 )
 from incident_agent.translator import EventTranslator
 from incident_agent.workers import WORKER_NAMES
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -60,7 +63,12 @@ async def _stop(orchestrator: Agent, consumer: asyncio.Task[None], grace_s: floa
     if consumer.done():
         return
     orchestrator.cancel()
-    _, still_running = await asyncio.wait({consumer}, timeout=grace_s)
+    try:
+        _, still_running = await asyncio.wait({consumer}, timeout=grace_s)
+    except asyncio.CancelledError:
+        # Cancelled again while waiting: stop waiting, but do not leave the run behind.
+        consumer.cancel()
+        raise
     if still_running:
         consumer.cancel()
         await asyncio.gather(consumer, return_exceptions=True)
@@ -114,9 +122,14 @@ async def run_incident(
     try:
         while True:
             try:
-                # Timed per step: an asyncio.timeout() block held open across the `yield` below
-                # could fire while the consumer is running, and be raised in the consumer's code.
-                raw = await asyncio.wait_for(raw_events.get(), deadline - loop.time())
+                # Events that have already arrived are never lost to the deadline, and timing each
+                # wait keeps it out of the consumer's code: an asyncio.timeout() block held open
+                # across the `yield` below could fire there instead.
+                raw = (
+                    raw_events.get_nowait()
+                    if not raw_events.empty()
+                    else await asyncio.wait_for(raw_events.get(), deadline - loop.time())
+                )
             except TimeoutError:
                 failure = f"The run hit its {limits.timeout_s:g}s deadline before finishing."
                 break
@@ -126,7 +139,13 @@ async def run_incident(
                 failure = redact(f"The orchestrator failed: {raw}")
                 break
 
-            for event in translator.feed(raw):
+            try:
+                translated = translator.feed(raw)
+            except Exception as error:
+                logger.exception("Could not interpret an agent event")
+                failure = redact(f"The run could not continue: {error}")
+                break
+            for event in translated:
                 yield event
             if result := raw.get("result"):
                 if isinstance(result.structured_output, IncidentSynthesis):
@@ -149,6 +168,8 @@ async def run_incident(
             incident=incident,
             runs=translator.runs,
             synthesis=synthesis,
+            synthesis_turn=translator.synthesis_turn,
+            unknown_tool_calls=translator.unknown_tool_calls,
             failure_reason=failure,
             fallback_text=translator.last_orchestrator_text,
             orchestrator_usage=translator.orchestrator_usage,

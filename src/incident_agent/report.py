@@ -1,7 +1,9 @@
 """Assembles the final report, and refuses to take the LLM's word for its completeness.
 
-The orchestrator writes the conclusions, but the worker findings come straight from the run. A
-synthesis that skips a worker is flagged, and a failed synthesis still leaves the raw findings.
+The orchestrator writes the conclusions, but the worker findings come straight from the run. The
+report is marked degraded wherever the run shows the synthesis cannot be relied on, and a failed
+synthesis still leaves the raw findings. These are structural checks: they cannot tell whether the
+LLM's reasoning from the evidence is sound.
 """
 
 from incident_agent import pricing
@@ -16,15 +18,61 @@ from incident_agent.schemas import (
 
 COMMS_WORKER = "comms_drafter"
 _FALLBACK_CAUSE = "Undetermined: the orchestrator did not complete its synthesis."
+_MAX_BRIEF_IN_NOTE = 200
 _FALLBACK_SUMMARY = (
     "The orchestrator did not complete its synthesis. Read the specialist findings directly."
 )
 
 
-def _workers_with_only_failures(runs: list[WorkerRun]) -> list[str]:
-    """Workers with no successful call. One the orchestrator retried successfully is fine."""
-    succeeded = {run.worker for run in runs if run.status == "ok"}
-    return list(dict.fromkeys(r.worker for r in runs if r.worker not in succeeded))
+def _unrecovered_failures(runs: list[WorkerRun]) -> list[WorkerRun]:
+    """Failed calls with no success on the same brief.
+
+    A success on a different brief says nothing about what the failed call was asked. A retry that
+    rewords its brief is flagged too: better a false alarm than missing evidence going unnoticed.
+    """
+    return [
+        run
+        for run in runs
+        if run.status == "failed"
+        and not any(
+            other.status == "ok" and other.worker == run.worker and other.task == run.task
+            for other in runs
+        )
+    ]
+
+
+def _failure_notes(runs: list[WorkerRun]) -> list[str]:
+    briefs_by_worker = {
+        worker: {run.task for run in runs if run.worker == worker}
+        for worker in {run.worker for run in runs}
+    }
+    notes = []
+    for run in _unrecovered_failures(runs):
+        note = f"Specialist {run.worker} failed, so its evidence is missing from this report."
+        if len(briefs_by_worker[run.worker]) > 1:
+            note = f"Specialist {run.worker} failed on this brief: {run.task[:_MAX_BRIEF_IN_NOTE]}"
+        if note not in notes:
+            notes.append(note)
+    return notes
+
+
+def _synthesis_notes(
+    runs: list[WorkerRun], synthesis: IncidentSynthesis, synthesis_turn: int | None
+) -> list[str]:
+    """Places where the LLM's account of the run does not match what really happened."""
+    ran = {run.worker for run in runs}
+    credited = {contribution.worker for contribution in synthesis.worker_contributions}
+    notes = [
+        f"The synthesis credits {worker}, which never ran. Treat that claim with suspicion."
+        for worker in sorted(credited - ran)
+    ]
+    if synthesis_turn is not None:
+        notes.extend(
+            f"The synthesis was written before {worker} answered, so it cannot reflect that "
+            "finding. Read its raw finding below."
+            for worker in dict.fromkeys(r.worker for r in runs if r.turn >= synthesis_turn)
+        )
+    return notes
 
 
 def _cost(
@@ -52,6 +100,8 @@ def assemble_report(
     incident: Incident,
     runs: list[WorkerRun],
     synthesis: IncidentSynthesis | None,
+    synthesis_turn: int | None,
+    unknown_tool_calls: list[str],
     failure_reason: str | None,
     fallback_text: str,
     orchestrator_usage: Usage,
@@ -59,12 +109,25 @@ def assemble_report(
     worker_model_id: str,
     duration_ms: int,
 ) -> IncidentReport:
-    notes = [
-        f"Specialist {worker} failed, so its evidence is missing from this report."
-        for worker in _workers_with_only_failures(runs)
-    ]
+    notes = _failure_notes(runs)
+    notes.extend(
+        f"Specialist {run.worker} made tool calls that all failed, so its answer has no evidence "
+        "behind it."
+        for run in runs
+        if run.status == "ok"
+        and (results := [step for step in run.trace if step.kind == "tool_result"])
+        and all(step.is_error for step in results)
+    )
+    notes.extend(
+        f"The orchestrator asked for {name}, which does not exist, so that work never happened."
+        for name in dict.fromkeys(unknown_tool_calls)
+    )
     if failure_reason:
         notes.append(failure_reason)
+    if synthesis:
+        notes.extend(_synthesis_notes(runs, synthesis, synthesis_turn))
+        if not runs:
+            notes.append("No specialists were called, so this rests on the incident text alone.")
 
     succeeded = list(dict.fromkeys(run.worker for run in runs if run.status == "ok"))
     acknowledged = {c.worker for c in synthesis.worker_contributions} if synthesis else set()

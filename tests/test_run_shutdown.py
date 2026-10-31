@@ -19,7 +19,7 @@ def other_tasks() -> list[str]:
 
 
 class MidFlight:
-    """A team whose workers signal once they are inside a model call, then take a while to finish."""
+    """A team whose workers signal once inside a model call, then take a while to finish."""
 
     def __init__(self) -> None:
         self.entered = asyncio.Event()

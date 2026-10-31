@@ -3,10 +3,10 @@
 from collections.abc import Collection
 
 from botocore.config import Config
-from strands.models import BedrockModel
 
 from incident_agent.config import Settings
 from incident_agent.llm.base import ModelSet
+from incident_agent.llm.bedrock import AbortableBedrockModel
 from incident_agent.llm.demo import build_demo_models
 from incident_agent.workers import WORKER_NAMES
 
@@ -32,13 +32,13 @@ def build_models(settings: Settings, simulate_failures: Collection[str] = ()) ->
         raise ValueError("simulate_failures is only available with LLM_MODE=fake")
 
     # No temperature, top_p or top_k: Opus 5.5 rejects them. Effort is left at the model default.
-    orchestrator = BedrockModel(
+    orchestrator = AbortableBedrockModel(
         model_id=settings.bedrock_model_id,
         region_name=settings.aws_region,
         max_tokens=_ORCHESTRATOR_MAX_TOKENS,
         boto_client_config=_BOTO_CONFIG,
     )
-    worker = BedrockModel(
+    worker = AbortableBedrockModel(
         model_id=settings.bedrock_worker_model_id,
         region_name=settings.aws_region,
         max_tokens=_WORKER_MAX_TOKENS,

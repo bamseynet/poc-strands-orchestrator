@@ -28,7 +28,9 @@ calling one that cannot change the outcome wastes time and money.
 Run specialists in parallel whenever they are independent: request all of them in the same \
 response and they run at the same time. When one needs another's findings, such as a stakeholder \
 message that must state the confirmed impact, wait for those findings and put them in its brief. \
-Specialists have no memory and no view of the incident beyond the brief you write.
+Specialists have no memory and no view of the incident beyond the brief you write. Request each \
+specialist at most once per response, and cover everything you need from it in that one brief: a \
+second concurrent request to the same specialist is refused.
 
 With your first specialist requests, call {RECORD_PLAN_TOOL} in the same response to say which \
 specialists you chose and why. Responders read this live.

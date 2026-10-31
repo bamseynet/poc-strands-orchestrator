@@ -30,6 +30,7 @@ _PROCEDURE_TERMS = ("certificate", "renewal", "procedure", "expir")
 _IMPACT_TERMS = ("who is affected", "which services", "blast radius", "affected", "impact")
 _COMMS_TERMS = ("announcement", "stakeholder", "status page", "notify")
 _URGENT = ("sev1", "sev2")
+_NO_LOG_EVIDENCE = "The brief names no service I have logs for."
 
 # Seconds of simulated thinking per model response, before `delay_scale`.
 _THINK_S = {"orchestrator": 0.8, _LOGS: 1.2, _RUNBOOK: 0.7, _IMPACT: 0.9, _COMMS: 1.0}
@@ -76,7 +77,7 @@ def _results(request: ScriptedRequest) -> list[_Result]:
         _Result(
             tool=names[result["toolUseId"]],
             ok=result.get("status") != "error",
-            text="".join(part.get("text", "") for part in result["content"]),
+            text="".join(part.get("text", "") for part in result["content"]).strip(),
         )
         for message in request.messages
         for block in message["content"]
@@ -153,6 +154,8 @@ def _synthesise(incident: dict[str, Any], results: list[_Result]) -> dict[str, A
     workers = [r for r in results if r.tool != RECORD_PLAN_TOOL]
     by_tool = {r.tool: r for r in workers if r.ok}
     logs = by_tool.get(_LOGS)
+    if logs and logs.text == _NO_LOG_EVIDENCE:
+        logs = None
     impact = by_tool.get(_IMPACT)
     runbook = by_tool.get(_RUNBOOK)
     comms = by_tool.get(_COMMS)
@@ -192,7 +195,7 @@ def _analyse_logs(request: ScriptedRequest) -> TurnOutcome:
     if not results:
         services = _known_services(_prompt(request))
         if not services:
-            return Turn(text="The brief names no service I have logs for.")
+            return Turn(text=_NO_LOG_EVIDENCE)
         return Turn(
             text="Summarising errors for each service in the brief.",
             tool_calls=[ToolCall("summarise_log_errors", {"service": s}) for s in services],
@@ -267,7 +270,7 @@ def _draft_comms(request: ScriptedRequest) -> TurnOutcome:
         )
     policy = json.loads(results[0].text)
     incident = re.search(r"Incident: (.*)", prompt)
-    impact = re.search(r"Confirmed impact: (.*)", prompt)
+    impact = re.search(r"Confirmed impact: (.*)", prompt, re.DOTALL)
     return Turn(
         text=(
             f"For: {', '.join(policy['audiences'])}\n\n"

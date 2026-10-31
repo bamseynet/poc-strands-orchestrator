@@ -109,7 +109,9 @@ class TestOrchestratorChoosesWorkersAtRunTime:
         prompt = team.worker_models[LOGS].requests[0].messages[0]["content"][0]["text"]
         assert prompt == "look for pool errors after 14:00"
 
-    async def test_the_cheaper_model_serves_workers_and_the_stronger_one_orchestrates(self) -> None:
+    async def test_the_run_reports_which_model_tier_does_what(self) -> None:
+        # The labels. That each tier really calls its own model is tested against a stubbed client
+        # in test_config_and_models.py.
         events = await run(Team([synthesis()]))
         started = next(e for e in events if isinstance(e, RunStarted))
         assert started.orchestrator_model == "us.anthropic.claude-opus-5-5"
@@ -166,7 +168,7 @@ class TestPlanIsVisible:
         team = Team([Turn(tool_calls=[plan("p")]), synthesis()])
         events = await run(team)
         assert not [e for e in events if isinstance(e, WorkerStarted)]
-        assert report_from(events).status == "complete"
+        assert report_from(events).worker_findings == []
 
     async def test_orchestrator_turns_are_announced(self) -> None:
         team = Team([Turn(tool_calls=[call(LOGS)]), synthesis([LOGS])], {LOGS: says("x")})
@@ -334,11 +336,11 @@ class TestFailingWorkerDegradesGracefully:
         assert results[f"call-{RUNBOOK}"]["status"] == "success"
         assert report.summary == "Checkout is failing."
 
-    async def test_the_orchestrator_can_recover_by_retrying_or_calling_another_worker(self) -> None:
+    async def test_the_orchestrator_can_recover_by_retrying_the_same_brief(self) -> None:
         team = Team(
             [
                 Turn(tool_calls=[call(LOGS)]),
-                Turn(tool_calls=[ToolCall(LOGS, {"input": "again"}, tool_use_id="retry")]),
+                Turn(tool_calls=[ToolCall(LOGS, {"input": "investigate"}, tool_use_id="retry")]),
                 synthesis([LOGS]),
             ],
             {LOGS: [RuntimeError("blip"), Turn(text="logs ok on retry")]},
@@ -384,6 +386,8 @@ class TestFailingWorkerDegradesGracefully:
         assert finding.status == "ok"
         results = [s for s in finding.trace if s.kind == "tool_result"]
         assert results[0].is_error
+        told = team.worker_models[LOGS].requests[1].messages[-1]["content"][0]["toolResult"]
+        assert told["status"] == "error", "the worker itself must learn its tool failed"
         assert "no-such-service" in results[0].detail
 
     async def test_calling_one_worker_twice_in_a_turn_fails_only_the_duplicate(self) -> None:
@@ -409,6 +413,7 @@ class TestFailingWorkerDegradesGracefully:
         report = report_from(await asyncio.wait_for(run(team), TIMEOUT_S))
         statuses = {f.tool_use_id: f.status for f in report.worker_findings}
         assert statuses == {"first": "ok", "second": "failed"}
+        assert report.status == "degraded"
 
     async def test_orchestrator_failing_before_any_worker_is_a_run_failure(self) -> None:
         events = await run(Team([RuntimeError("bedrock unavailable")]))

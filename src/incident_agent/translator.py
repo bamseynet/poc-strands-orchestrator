@@ -48,6 +48,17 @@ def _usage_of(message: Mapping[str, Any]) -> Usage:
     )
 
 
+def _task_of(tool_input: Any) -> str:
+    """The brief in a worker call. Models usually send an object, but Strands also accepts text."""
+    return str(tool_input.get("input", "")) if isinstance(tool_input, Mapping) else str(tool_input)
+
+
+def _rationale_of(tool_use: Mapping[str, Any]) -> str | None:
+    tool_input = tool_use["input"]
+    rationale = tool_input.get("rationale") if isinstance(tool_input, Mapping) else None
+    return rationale if isinstance(rationale, str) else None
+
+
 class EventTranslator:
     """Feed it raw events in order; it returns the typed events and tracks the run's state."""
 
@@ -64,6 +75,8 @@ class EventTranslator:
         self._tool_names: dict[tuple[str, str], str] = {}
         self.orchestrator_usage = Usage()
         self.last_orchestrator_text = ""
+        self.synthesis_turn: int | None = None
+        self.unknown_tool_calls: list[str] = []
 
     @property
     def runs(self) -> list[WorkerRun]:
@@ -84,18 +97,25 @@ class EventTranslator:
             if message["role"] == "assistant":
                 return self._on_orchestrator_message(message)
             return self._on_tool_results(message)
-        return self._maybe_announce_synthesis(raw)
+        if "structured_output" in raw:
+            # When the model replies with JSON text, as Opus 5.5 does on a retry, no tool call
+            # announced the synthesis.
+            self.synthesis_turn = self.synthesis_turn or self._turn
+            return self._announce_synthesis()
+        start = raw.get("event", {}).get("contentBlockStart", {}).get("start", {})
+        if start.get("toolUse", {}).get("name") == SYNTHESIS_TOOL:
+            return self._announce_synthesis()
+        return []
 
     def finalise(self, reason: str) -> list[RunEvent]:
         """Close off calls still in flight when the run ended, so none silently disappear."""
         return [self._finish(run, error=reason) for run in self.runs if run.status == "running"]
 
-    def _maybe_announce_synthesis(self, raw: Mapping[str, Any]) -> list[RunEvent]:
-        start = raw.get("event", {}).get("contentBlockStart", {}).get("start", {})
-        if start.get("toolUse", {}).get("name") == SYNTHESIS_TOOL and not self._synthesis_announced:
-            self._synthesis_announced = True
-            return [SynthesisStarted()]
-        return []
+    def _announce_synthesis(self) -> list[RunEvent]:
+        if self._synthesis_announced:
+            return []
+        self._synthesis_announced = True
+        return [SynthesisStarted()]
 
     def _on_orchestrator_message(self, message: Mapping[str, Any]) -> list[RunEvent]:
         usage = _usage_of(message)
@@ -112,15 +132,19 @@ class EventTranslator:
             PlannedCall(
                 tool_use_id=tool_use["toolUseId"],
                 worker=tool_use["name"],
-                task=str(tool_use["input"].get("input", "")),
+                task=_task_of(tool_use["input"]),
             )
             for tool_use in tool_uses
             if tool_use["name"] in self._worker_names
         ]
         recorded = next(
-            (use["input"].get("rationale") for use in tool_uses if use["name"] == RECORD_PLAN_TOOL),
-            None,
+            (_rationale_of(use) for use in tool_uses if use["name"] == RECORD_PLAN_TOOL), None
         )
+        for tool_use in tool_uses:
+            if tool_use["name"] == SYNTHESIS_TOOL:
+                self.synthesis_turn = self._turn
+            elif tool_use["name"] not in {*self._worker_names, RECORD_PLAN_TOOL}:
+                self.unknown_tool_calls.append(tool_use["name"])
         if not calls and recorded is None:
             return []
 
