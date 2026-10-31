@@ -1,0 +1,28 @@
+2026-10-30T13:50:20Z INFO checkout-web [http] POST /checkout/confirm 200 duration_ms=264 request_id=req-ba834c
+2026-10-30T13:53:20Z INFO checkout-web [http] POST /checkout/confirm 200 duration_ms=251 request_id=req-fd009b
+2026-10-30T13:56:20Z INFO checkout-web [http] POST /checkout/confirm 200 duration_ms=262 request_id=req-942027
+2026-10-30T13:59:20Z INFO checkout-web [http] POST /checkout/confirm 200 duration_ms=257 request_id=req-3c2e36
+2026-10-30T14:03:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-5deb48
+2026-10-30T14:03:14Z WARN checkout-web [http] POST /checkout/confirm 502 duration_ms=10226 request_id=req-adbb25
+2026-10-30T14:04:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-13cfaf
+2026-10-30T14:05:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-a2ab78
+2026-10-30T14:06:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-9106af
+2026-10-30T14:06:14Z WARN checkout-web [http] POST /checkout/confirm 502 duration_ms=10164 request_id=req-e66931
+2026-10-30T14:07:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-41dc35
+2026-10-30T14:08:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-a4a551
+2026-10-30T14:09:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-4caac9
+2026-10-30T14:09:14Z WARN checkout-web [http] POST /checkout/confirm 502 duration_ms=10229 request_id=req-59028d
+2026-10-30T14:10:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-2d2310
+2026-10-30T14:11:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-18a9ee
+2026-10-30T14:12:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-cacccf
+2026-10-30T14:12:14Z WARN checkout-web [http] POST /checkout/confirm 502 duration_ms=10118 request_id=req-17c38e
+2026-10-30T14:13:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-be7d06
+2026-10-30T14:14:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-9718c4
+2026-10-30T14:15:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-7ff0c2
+2026-10-30T14:15:14Z WARN checkout-web [http] POST /checkout/confirm 502 duration_ms=10151 request_id=req-7da87b
+2026-10-30T14:16:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-44bb7d
+2026-10-30T14:17:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-3387fc
+2026-10-30T14:18:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-20b8bb
+2026-10-30T14:18:14Z WARN checkout-web [http] POST /checkout/confirm 502 duration_ms=10156 request_id=req-54fd4c
+2026-10-30T14:19:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-442b13
+2026-10-30T14:20:12Z ERROR checkout-web [upstream] payments-api returned 503 for POST /v1/charges retries=2 request_id=req-ffea79

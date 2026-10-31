@@ -1,0 +1,26 @@
+{
+  "sev1": {
+    "audiences": ["customers (status page)", "executive bridge", "customer support"],
+    "update_cadence_minutes": 30,
+    "status_page": true,
+    "tone": "Plain, factual, no speculation about cause until confirmed. Say what customers can do now."
+  },
+  "sev2": {
+    "audiences": ["customer support", "affected internal teams"],
+    "update_cadence_minutes": 60,
+    "status_page": true,
+    "tone": "Factual. State the affected capability and the next update time."
+  },
+  "sev3": {
+    "audiences": ["affected internal teams"],
+    "update_cadence_minutes": 240,
+    "status_page": false,
+    "tone": "Brief internal note with the owner and expected resolution."
+  },
+  "sev4": {
+    "audiences": ["affected internal teams"],
+    "update_cadence_minutes": 1440,
+    "status_page": false,
+    "tone": "Advance notice. Say when, how long, and what will be unavailable."
+  }
+}
