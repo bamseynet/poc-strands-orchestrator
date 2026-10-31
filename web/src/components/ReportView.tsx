@@ -8,8 +8,13 @@ import { TraceSteps } from "./TraceSteps";
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   async function copy() {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+    } catch {
+      // Clipboard access is refused outside secure contexts or without permission.
+      setCopied(false);
+    }
   }
   return (
     <button type="button" className="secondary small" onClick={() => void copy()}>

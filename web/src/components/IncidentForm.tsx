@@ -33,8 +33,16 @@ export function IncidentForm({ config, samples, running, onSubmit, onStop }: Pro
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    // Keep the sample's other fields (source, start time), which the form has no inputs for.
-    const sample = samples.find((s) => s.id === sampleId);
+    // Keep the sample's other fields (id, source, start time), which the form has no inputs for,
+    // but only while it is still that sample: an edited incident is a different incident.
+    const found = samples.find((s) => s.id === sampleId);
+    const sample =
+      found &&
+      found.title === title &&
+      found.severity === severity &&
+      found.description === description
+        ? found
+        : undefined;
     const incident: Incident = {
       ...(sample && { id: sample.id, source: sample.source, started_at: sample.started_at }),
       title,

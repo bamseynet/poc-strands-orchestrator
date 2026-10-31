@@ -38,7 +38,9 @@ async def sse_stream(
             queue.put_nowait(RunFailed(error=redact(f"The run failed: {error}")))
         finally:
             try:
-                await cast(AsyncGenerator[RunEvent, None], events).aclose()
+                # A backend may hand back any async iterator, and only generators can be closed.
+                if (aclose := getattr(events, "aclose", None)) is not None:
+                    await aclose()
             finally:
                 # Without this, a failing aclose leaves the consumer sending heartbeats forever.
                 queue.put_nowait(_DONE)

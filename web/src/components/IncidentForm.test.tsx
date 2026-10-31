@@ -82,6 +82,13 @@ describe("IncidentForm", () => {
     });
   });
 
+  it("does not pass an edited incident off as the sample it started from", async () => {
+    const { user, onSubmit } = setup();
+    await user.type(screen.getByLabelText("Title"), " (edited)");
+    await user.click(screen.getByRole("button", { name: "Respond to incident" }));
+    expect(onSubmit.mock.calls[0]?.[0].incident.id).toBeUndefined();
+  });
+
   it("does not submit without a title and description", async () => {
     const { user, onSubmit } = setup();
     await user.clear(screen.getByLabelText("Title"));
