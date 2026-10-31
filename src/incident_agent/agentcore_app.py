@@ -31,13 +31,20 @@ async def invoke(payload: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None
         yield RunFailed(error="The incident in this request is not valid.").model_dump(mode="json")
         return
 
-    settings = Settings()
-    limits = RunLimits(
-        turns=settings.max_total_turns,
-        total_tokens=settings.max_total_tokens,
-        timeout_s=settings.run_timeout_s,
-    )
-    async for event in run_incident(incident, build_models(settings), limits=limits):
+    try:
+        settings = Settings()
+        limits = RunLimits(
+            turns=settings.max_total_turns,
+            total_tokens=settings.max_total_tokens,
+            timeout_s=settings.run_timeout_s,
+        )
+        models = build_models(settings)
+    except Exception:
+        # Bad configuration is the operator's problem; the details belong in the logs, not the UI.
+        logger.exception("The agent is misconfigured")
+        yield RunFailed(error="The agent is misconfigured. See its logs.").model_dump(mode="json")
+        return
+    async for event in run_incident(incident, models, limits=limits):
         yield event.model_dump(mode="json")
 
 

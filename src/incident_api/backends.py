@@ -75,7 +75,9 @@ class AgentCoreBackend:
             payload=json.dumps({"incident": incident.model_dump(mode="json")}).encode(),
         )
         body = response["response"]
-        chunks = body.iter_chunks()
+        # A read blocks until it has chunk_size bytes, and these frames are small and minutes
+        # apart, so the default of 1 KiB would hold progress back. One byte returns what is there.
+        chunks = body.iter_chunks(chunk_size=1)
         finished = False
         try:
             async for data in _sse_data(chunks):
@@ -97,7 +99,8 @@ async def _sse_data(chunks: Iterator[bytes]) -> AsyncGenerator[str, None]:
     decoder = codecs.getincrementaldecoder("utf-8")()
     buffer = ""
     while (chunk := await asyncio.to_thread(next, chunks, None)) is not None:
-        buffer += decoder.decode(chunk)
+        # The SSE spec allows CRLF. The buffer is kept whole, so a CR and LF split apart still join.
+        buffer = (buffer + decoder.decode(chunk)).replace("\r\n", "\n")
         while "\n\n" in buffer:
             frame, buffer = buffer.split("\n\n", 1)
             if data := _frame_data(frame):

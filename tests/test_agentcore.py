@@ -69,6 +69,19 @@ class TestAgentCoreEntrypoint:
         assert events[0]["type"] == "run_started"
         assert events[-1]["type"] == "report_ready"
 
+    async def test_a_misconfigured_agent_fails_the_run_without_leaking_the_error(
+        self, client: httpx.AsyncClient, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def boom(*args: Any, **kwargs: Any) -> None:
+            raise RuntimeError("arn:aws:iam::123456789012:role/secret-detail")
+
+        monkeypatch.setattr(agentcore_app, "build_models", boom)
+        async with client:
+            response = await client.post("/invocations", json={"incident": INCIDENT})
+        events = self.events_in(response.text)
+        assert [e["type"] for e in events] == ["run_failed"]
+        assert "123456789012" not in response.text
+
     @pytest.mark.parametrize(
         "payload", [{}, {"incident": {"title": "incomplete"}}, {"incident": "not an object"}]
     )
@@ -90,6 +103,7 @@ class FakeBody:
         self.closed = False
 
     def iter_chunks(self, chunk_size: int = 1024) -> Iterator[bytes]:
+        self.chunk_size = chunk_size
         yield from self._chunks
         if self._then is not None:
             self._then.wait(5)
@@ -134,6 +148,18 @@ class TestAgentCoreBackend:
     async def test_a_last_frame_without_a_blank_line_is_still_delivered(self) -> None:
         unterminated = frame(run_started_json()).rstrip(b"\n")
         events = await collect(backend_with(FakeAgentCoreClient(FakeBody([unterminated]))))
+        assert isinstance(events[0], RunStarted)
+
+    async def test_reads_with_a_small_chunk_size_so_progress_is_not_held_back(self) -> None:
+        body = FakeBody([frame(run_started_json())])
+        await collect(backend_with(FakeAgentCoreClient(body)))
+        assert body.chunk_size == 1
+
+    async def test_accepts_crlf_framing_even_when_split_between_chunks(self) -> None:
+        raw = frame(run_started_json()).replace(b"\n", b"\r\n")
+        cut = raw.index(b"\r\n") + 1  # between the CR and the LF
+        body = FakeBody([raw[:cut], raw[cut:]])
+        events = await collect(backend_with(FakeAgentCoreClient(body)))
         assert isinstance(events[0], RunStarted)
 
     async def test_survives_a_frame_split_across_chunks(self) -> None:
